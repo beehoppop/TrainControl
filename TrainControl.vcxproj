@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A94CA11C-8299-47C9-BDF6-883731E9BD16}</ProjectGuid>
+    <RootNamespace>TrainControl</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;C:\Users\brent\Documents\Arduino\TrainControl;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries;C:\Program Files (x86)\Visual Micro\Visual Micro for Arduino\Micro Platforms\default\debuggers;C:\Users\brent\Documents\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\tools\avr/avr/include/;C:\Program Files (x86)\Arduino\hardware\tools\avr//avr/include/avr/;C:\Program Files (x86)\Arduino\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>C:\Users\brent\Documents\Arduino\TrainControl\Visual Micro\.TrainControl.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
+      <PreprocessorDefinitions>__MK20DX256__;TEENSYDUINO=124;ARDUINO=165;F_CPU=72000000;ARDUINO_ARCH_AVR;USB_SERIAL;LAYOUT_US_ENGLISH;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="TrainControl.ino">
+      <FileType>CppCode</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TCAction.h" />
+    <ClInclude Include="TCAssert.h" />
+    <ClInclude Include="TCCANBus.h" />
+    <ClInclude Include="TCCommon.h" />
+    <ClInclude Include="TCConfig.h" />
+    <ClInclude Include="TCControlSwitch.h" />
+    <ClInclude Include="TCDCCPacket.h" />
+    <ClInclude Include="TCDCCProtocol.h" />
+    <ClInclude Include="TCDigitalIO.h" />
+    <ClInclude Include="TCLED.h" />
+    <ClInclude Include="TCModule.h" />
+    <ClInclude Include="TCSerial.h" />
+    <ClInclude Include="TCState.h" />
+    <ClInclude Include="TCTurnout.h" />
+    <ClInclude Include="TCUtilities.h" />
+    <ClInclude Include="Visual Micro\.TrainControl.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="TCAction.cpp" />
+    <ClCompile Include="TCAssert.cpp" />
+    <ClCompile Include="TCCANBus.cpp" />
+    <ClCompile Include="TCConfig.cpp" />
+    <ClCompile Include="TCControlSwitch.cpp" />
+    <ClCompile Include="TCDCCPacket.cpp" />
+    <ClCompile Include="TCDCCProtocol.cpp" />
+    <ClCompile Include="TCDigitalIO.cpp" />
+    <ClCompile Include="TCLED.cpp" />
+    <ClCompile Include="TCModule.cpp" />
+    <ClCompile Include="TCSerial.cpp" />
+    <ClCompile Include="TCState.cpp" />
+    <ClCompile Include="TCTurnout.cpp" />
+    <ClCompile Include="TCUtilities.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties arduino.upload.port="COM10" />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>
