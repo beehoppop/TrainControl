@@ -10,6 +10,7 @@
 #include "TCUtilities.h"
 #include "TCControlSwitch.h"
 #include "TCTurnout.h"
+#include "TCDCC.h"
 
 CAction gAction;
 
@@ -78,96 +79,6 @@ CAction::Alive(
 }
 
 bool
-CAction::ControlSwitch(
-	uint8_t						inSrcNodeID,
-	uint8_t						inDstNodeID,
-	SMsg_ControlSwitch const&	inControlSwitch)
-{
-	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
-	{
-		gControlSwitch.ControlSwitchActivated(inControlSwitch.id, inControlSwitch.direction, false);
-	}
-	else
-	{
-		gCANBus.SendMsg(inDstNodeID, eMsgType_ControlSwitch, 0, sizeof(inControlSwitch), &inControlSwitch);
-	}
-
-	return true;
-}
-
-bool
-CAction::TrackTurnout(
-	uint8_t						inSrcNodeID,
-	uint8_t						inDstNodeID,
-	SMsg_TrackTurnout const&	inTrackTurnout)
-{
-	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
-	{
-		gTurnout.SetTurnoutDirection(inTrackTurnout.id, inTrackTurnout.direction);
-	}
-	else
-	{
-		gCANBus.SendMsg(inDstNodeID, eMsgType_TrackTurnout, 0, sizeof(inTrackTurnout), &inTrackTurnout);
-	}
-
-	return true;
-}
-
-bool
-CAction::TrackSensor(
-	uint8_t					inSrcNodeID,
-	uint8_t					inDstNodeID,
-	SMsg_TrackSesnor const&	inTrackSensor)
-{
-	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
-	{
-
-	}
-	else
-	{
-		gCANBus.SendMsg(inDstNodeID, eMsgType_TrackTurnout, 0, sizeof(inTrackSensor), &inTrackSensor);
-	}
-
-	return true;
-}
-
-bool
-CAction::ConfigVar(
-	uint8_t					inSrcNodeID,
-	uint8_t					inDstNodeID,
-	SMsg_ConfigVar const&	inConfigVar)
-{
-	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
-	{
-		gConfig.SetVal(inConfigVar.configVar, inConfigVar.value);
-	}
-	else
-	{
-		gCANBus.SendMsg(inDstNodeID, eMsgType_ConfigVar, 0, sizeof(inConfigVar), &inConfigVar);
-	}
-
-	return true;
-}
-
-bool
-CAction::StateVar(
-	uint8_t					inSrcNodeID,
-	uint8_t					inDstNodeID,
-	SMsg_StateVar const&	inStateVar)
-{
-	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
-	{
-		gConfig.SetVal(inStateVar.stateVar, inStateVar.value);
-	}
-	else
-	{
-		gCANBus.SendMsg(inDstNodeID, eMsgType_StateVar, 0, sizeof(inStateVar), &inStateVar);
-	}
-
-	return true;
-}
-
-bool
 CAction::TableWrite(
 	uint8_t				inSrcNodeID,
 	uint8_t				inDstNodeID,
@@ -187,6 +98,10 @@ CAction::TableWrite(
 
 			case eTableType_TrackSensor:
 				break;
+
+			case eTableType_DCC:
+				return gDCC.TableWrite(inSrcNodeID, inProgram);
+
 		}
 
 		return false;
@@ -217,12 +132,48 @@ CAction::TableRead(
 
 			case eTableType_TrackSensor:
 				break;
+
+			case eTableType_DCC:
+				return gDCC.TableRead(inSrcNodeID, inProgram);
 		}
 
 		return false;
 	}
 
 	gCANBus.SendMsg(inDstNodeID, eMsgType_TableRead, 0, sizeof(inProgram), &inProgram);
+
+	return true;
+}
+
+bool
+CAction::TableUpdate(
+	uint8_t				inSrcNodeID,
+	uint8_t				inDstNodeID,
+	SMsg_Table const&	inProgram)
+{
+	if(inDstNodeID == gConfig.GetVal(eConfigVar_NodeID))
+	{
+		switch(inProgram.type)
+		{
+			case eTableType_ControlSwitch:
+			case eTableType_ControlSwitchToTurnoutMap:
+				return gControlSwitch.TableUpdate(inSrcNodeID, inProgram);
+
+			case eTableType_TrackTurnout:
+			case eTableType_TrackTurnoutLEDMap:
+				return gTurnout.TableUpdate(inSrcNodeID, inProgram);
+
+			case eTableType_TrackSensor:
+				break;
+
+			case eTableType_DCC:
+				return gDCC.TableUpdate(inSrcNodeID, inProgram);
+		}
+
+		return false;
+	}
+
+	gCANBus.SendMsg(inDstNodeID, eMsgType_TableUpdate, 0, sizeof(inProgram), &inProgram);
 
 	return true;
 }

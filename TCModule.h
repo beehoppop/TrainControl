@@ -21,7 +21,8 @@ public:
 	
 	CModule(
 		uint32_t	inUID,
-		uint16_t	inEEPROMSize);
+		uint16_t	inEEPROMSize,
+		uint32_t	inUpdateTimeUS = 0);
 
 	virtual void
 	Setup(
@@ -29,7 +30,7 @@ public:
 
 	virtual void
 	Update(
-		void);
+		uint32_t	inDeltaTimeUS);
 	
 	virtual void
 	EEPROMInitialize(
@@ -49,8 +50,11 @@ protected:
 
 	uint16_t		eepromSize;
 	uint16_t		eepromOffset;
-	
+	uint32_t		updateTimeUS;
+	uint32_t		lastUpdateUS;
 };
 
+extern uint32_t		gCurTimeMS;
+extern uint32_t		gCurTimeUS;
 
 #endif

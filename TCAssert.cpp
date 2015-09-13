@@ -6,7 +6,7 @@
 #include "TCConfig.h"
 #include "TCAction.h"
 
-uint8_t	gLevel;
+uint8_t	gLevel = eDbgLevel_Verbose;
 
 void
 AssertFailed(

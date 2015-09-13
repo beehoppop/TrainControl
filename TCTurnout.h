@@ -25,8 +25,14 @@ public:
 	
 	void
 	SetTurnoutDirection(
-		uint8_t	inID,
-		uint8_t	inDirection);
+		uint16_t	inTurnoutID,
+		uint8_t		inDirection);
+	
+	void
+	ControlSwitchTouchedTurnoutID(
+		uint16_t	inTurnoutID,
+		bool		inTouched,
+		bool		inBroadcast);
 
 	bool
 	TableRead(
@@ -38,14 +44,35 @@ public:
 		int8_t				inSrcNode,
 		SMsg_Table const&	inProgram);
 
+	bool
+	TableUpdate(
+		int8_t				inSrcNode,
+		SMsg_Table const&	inProgram);
+
 private:
+
+	struct STurnoutIDToLEDNumList
+	{
+		uint8_t	count;
+		uint8_t	straightNumList[eMaxLEDsPerTurnout];
+		uint8_t	turnNumList[eMaxLEDsPerTurnout];
+	};
+
+	void
+	ActivateTurnout(
+		uint8_t	inTableIndex,
+		uint8_t	inDirection);
+
 	STrackTurnoutConfig			turnoutConfigArray[eMaxTrackTurnoutCount];
 	STrackTurnoutLEDMapConfig	turnoutLEDMapConfigArray[eMaxTrackTurnoutCount];
 	uint8_t						turnoutDirectionArray[eMaxTrackTurnoutCount];
 
 	uint16_t	turnoutConfigOffset;
-	uint16_t	turnoutLEDMapConfigOffset;
 	uint16_t	turnoutDirectionOffset;
+	uint16_t	turnouLEDMapOffset;
+
+	STurnoutIDToLEDNumList	turnoutIDToLEDNumMap[eMaxTurnoutID];
+	uint8_t					turnoutIDToTableIndexMap[eMaxTurnoutID];
 };
 
 extern CModule_Turnout gTurnout;

@@ -13,8 +13,6 @@
 
 enum
 {
-	eStateVar_TrackPower = 0,
-	eStateVar_ProgramPower,
 	eStateVar_Max = 16,
 
 };

@@ -20,7 +20,7 @@ public:
 
 	virtual void
 	Update(
-		void);
+		uint32_t	inDeltaTimeUS);
 
 	bool
 	CheckInputActivated(

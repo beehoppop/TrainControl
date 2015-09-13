@@ -25,7 +25,7 @@ public:
 
 	virtual void
 	Update(
-		void);
+		uint32_t	inDeltaTimeUS);
 
 	void
 	SendMsg(

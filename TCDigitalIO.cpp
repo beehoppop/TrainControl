@@ -5,12 +5,17 @@
 #include "TCCommon.h"
 #include "TCDigitalIO.h"
 #include "TCUtilities.h"
+#include "TCAssert.h"
 
 enum 
 {
 	eState_WaitingForChange,
 	eState_WaitingForSettle,
 	eState_WaitingForDeactive,
+
+	eSettleTimeMS = 50,
+
+	eUpdateTimeUS = 10000
 };
 
 CModule_DigitalIO	gDigitalIO;
@@ -18,7 +23,7 @@ CModule_DigitalIO	gDigitalIO;
 CModule_DigitalIO::CModule_DigitalIO(
 	)
 	:
-	CModule(MMakeUID('d', 'g', 'i', 'o'), 0)
+	CModule(MMakeUID('d', 'g', 'i', 'o'), 0, eUpdateTimeUS)
 {
 	memset(inputPinLastChange, 0, sizeof(inputPinLastChange));
 	memset(inputPinLastState, 0, sizeof(inputPinLastState));
@@ -27,7 +32,7 @@ CModule_DigitalIO::CModule_DigitalIO(
 
 void
 CModule_DigitalIO::Update(
-	void)
+	uint32_t	inDeltaTimeUS)
 {
 	for(int i = 0; i < eDIOPinCount; ++i)
 	{
@@ -45,26 +50,26 @@ CModule_DigitalIO::CheckInputActivated(
 {
 	uint8_t	value = digitalReadFast(inPin);
 
-	switch(inputPinLastState[eDIOPinCount])
+	switch(inputPinLastState[inPin])
 	{
 		case eState_WaitingForChange:
 			if(value == 0)
 			{
 				inputPinLastChange[inPin] = gCurTimeMS;
-				inputPinLastState[eDIOPinCount] = eState_WaitingForSettle;
+				inputPinLastState[inPin] = eState_WaitingForSettle;
 			}
 			return false;
 
 		case eState_WaitingForSettle:
 			if(value != 0)
 			{
-				inputPinLastState[eDIOPinCount] = eState_WaitingForChange;
+				inputPinLastState[inPin] = eState_WaitingForChange;
 				return false;
 			}
 
-			if(gCurTimeMS - inputPinLastChange[inPin] >= 50)
+			if(gCurTimeMS - inputPinLastChange[inPin] >= eSettleTimeMS)
 			{
-				inputPinLastState[eDIOPinCount] = eState_WaitingForDeactive;
+				inputPinLastState[inPin] = eState_WaitingForDeactive;
 				return true;
 			}
 			return false;
@@ -72,7 +77,7 @@ CModule_DigitalIO::CheckInputActivated(
 		case eState_WaitingForDeactive:
 			if(value != 0)
 			{
-				inputPinLastState[eDIOPinCount] = eState_WaitingForChange;
+				inputPinLastState[inPin] = eState_WaitingForChange;
 			}
 			return false;
 	}

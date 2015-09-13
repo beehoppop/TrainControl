@@ -9,13 +9,19 @@
 
 enum
 {
-	eMaxControlSwitchCount = 16,
+	eMaxControlSwitchCount = 12,
 	eMaxTrackTurnoutCount = 16,
 	eMaxControlSwitchToTurnoutMapCount = 64,
 
+	eMaxControlSwitchID = 512,
+	eMaxTurnoutID		= 512,
+
+	eMaxTurnoutsPerSwitch	= 8,
+	eMaxLEDsPerTurnout		= 4,
+
 	eInvalidID = 0xFFFF,
 
-	eEEPROMVersion = 6,
+	eEEPROMVersion = 8,
 
 	eTurnDir_Straight = 0,
 	eTurnDir_Turnout,
@@ -24,26 +30,33 @@ enum
 	eMsgType_SerialOut,
 	eMsgType_TableWrite,
 	eMsgType_TableRead,
+	eMsgType_TableUpdate,
 	eMsgType_TrackSensor,
 	eMsgType_TrackTurnout,
 	eMsgType_ControlSwitch,
+	eMsgType_TurnoutControlSwitchTouch,
 	eMsgType_StateVar,
 	eMsgType_ConfigVar,
-	eMsgType_Throttle,
+
+	eMsgType_DCCTrack,
+	eMsgType_DCCThrottle,
+	eMsgType_DCCService,
 
 	eTableType_ControlSwitch = 1,
 	eTableType_TrackTurnout,
+	eTableType_TrackTurnoutLEDMap,
 	eTableType_TrackSensor,
 	eTableType_ControlSwitchToTurnoutMap,
-	eTableType_TrackTurnoutLEDMap,
+	eTableType_DCC,
 	
-	eThrottle_EmergencyAllStop,
-	eThrottle_ResetDecoder,
-	eThrottle_EmergencyStop,
-	eThrottle_SetSpeedAndDirection,
+
+	eDCCThrottle_Power = 1,
+	eDCCThrottle_EmergencyAllStop,
+	eDCCThrottle_ResetDecoder,
+	eDCCThrottle_EmergencyStop,
+	eDCCThrottle_SetSpeedAndDirection,
 
 	eDIOPinCount = 34,
-
 };
 
 struct SControlSwitchConfig
@@ -51,6 +64,7 @@ struct SControlSwitchConfig
 	uint16_t	id;
 	uint8_t		straightDInPin;
 	uint8_t		turnDInPin;
+	uint8_t		touchID;
 };
 
 struct STrackTurnoutConfig
@@ -58,6 +72,13 @@ struct STrackTurnoutConfig
 	uint16_t	id;
 	uint8_t		straightDOutPin;
 	uint8_t		turnDOutPin;
+};
+
+struct STrackTurnoutLEDMapConfig
+{
+	uint16_t	turnoutID;
+	uint8_t		straightLEDNum[2];
+	uint8_t		turnoutLEDNum[2];
 };
 
 struct STrackSensorConfig
@@ -69,15 +90,16 @@ struct STrackSensorConfig
 struct SControlSwitchToTurnoutMapConfig
 {
 	uint16_t	controlSwitchID;
-	uint16_t	trackTurnoutID;
-	uint8_t		invert;
+	uint16_t	turnout1ID;
+	uint16_t	turnout2ID;
 };
 
-struct STrackTurnoutLEDMapConfig
+struct SMsg_DCCCommandConfig
 {
-	uint16_t	trackTurnoutID;
-	uint16_t	straightLEDNum;
-	uint16_t	turnoutLEDNum;
+	uint16_t	commandID;
+	uint8_t		waveformPin;
+	uint8_t		powerPin;
+	uint8_t		currentSensePin;
 };
 
 struct SMsg_ControlSwitch
@@ -94,6 +116,13 @@ struct SMsg_TrackTurnout
 	uint8_t		direction;
 };
 
+struct SMsg_TurnoutControlSwitchTouch
+{
+	uint32_t	timeMS;
+	uint16_t	turnoutID;
+	uint8_t		touched;	// 1 is touch, 0 is release
+};
+
 struct SMsg_TrackSesnor
 {
 	uint32_t	timeMS;
@@ -108,11 +137,12 @@ struct SMsg_Table
 
 	union
 	{
-		SControlSwitchConfig		controlSwitch;
-		STrackTurnoutConfig			trackTurnout;
-		STrackSensorConfig			trackSensor;
-		SControlSwitchToTurnoutMapConfig		trackTurnoutMap;
-		STrackTurnoutLEDMapConfig	turnoutLED;
+		SControlSwitchConfig				controlSwitch;
+		STrackTurnoutConfig					trackTurnout;
+		STrackSensorConfig					trackSensor;
+		SControlSwitchToTurnoutMapConfig	trackTurnoutMap;
+		STrackTurnoutLEDMapConfig			trackTurnoutLEDMap;
+		SMsg_DCCCommandConfig				dccCommand;
 	};
 };
 
@@ -128,14 +158,19 @@ struct SMsg_StateVar
 	uint8_t	value;
 };
 
-struct SMsg_Throttle
+struct SMsg_DCCCommand
 {
 	uint16_t	address;
 	uint8_t		type;
 	uint8_t		data;
 };
 
-extern uint32_t		gCurTimeMS;
+struct SMsg_DCCServiceCommand
+{
+	uint8_t	type;
+	uint8_t	data;
+};
+
 extern char const*	gVersionStr;
 
 #endif /* _TCCOMMON_H_ */

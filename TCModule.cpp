@@ -17,6 +17,8 @@ enum
 
 };
 
+#define MDebugModules 0
+
 struct SEEPROMEntry
 {
 	uint32_t	uid;
@@ -29,12 +31,17 @@ static CModule*		gModuleList[eMaxModuleCount];
 static SEEPROMEntry	gEEPROMEntryList[eMaxModuleCount];
 static bool			gTooManyModules = false;
 
+uint32_t	gCurTimeMS;
+uint32_t	gCurTimeUS;
+
 CModule::CModule(
 	uint32_t	inUID,
-	uint16_t	inEEPROMSize)
+	uint16_t	inEEPROMSize,
+	uint32_t	inUpdateTimeUS)
 	:
 	uid(inUID),
-	eepromSize(inEEPROMSize)
+	eepromSize(inEEPROMSize),
+	updateTimeUS(inUpdateTimeUS)
 {
 	if(gModuleCount >= eMaxModuleCount)
 	{
@@ -54,7 +61,7 @@ CModule::Setup(
 
 void
 CModule::Update(
-	void)
+	uint32_t	inDeltaTimeUS)
 {
 
 }
@@ -69,7 +76,7 @@ CModule::EEPROMInitialize(
 	}
 }
 
-SEEPROMEntry*
+static SEEPROMEntry*
 FindEEPROMEntry(
 	uint32_t		inUID)
 {
@@ -234,11 +241,24 @@ CModule::SetupAll(
 		WriteDataToEEPROM(gEEPROMEntryList, eEEPROM_ListStart, sizeof(gEEPROMEntryList));
 	}
 
+	gCurTimeMS = millis();
+	gCurTimeUS = micros();
+	uint32_t	timeOffsetUS = 0;
+
 	for(int i = 0; i < gModuleCount; ++i)
 	{
-		Serial.printf("Setup module %s\n", StringizeUInt32(gModuleList[i]->uid));
+		DebugMsg(eDbgLevel_Medium, "Module: Setup %s\n", StringizeUInt32(gModuleList[i]->uid));
+		#if MDebugModules
+		delay(3000);
+		#endif
 		gModuleList[i]->Setup();
+		gModuleList[i]->lastUpdateUS = gCurTimeUS + timeOffsetUS;
+		timeOffsetUS += gModuleList[i]->updateTimeUS;
 	}
+
+	#if MDebugModules
+	DebugMsg(eDbgLevel_Medium, "Module: Complete\n");
+	#endif
 }
 
 void
@@ -247,6 +267,14 @@ CModule::LoopAll(
 {
 	for(int i = 0; i < gModuleCount; ++i)
 	{
-		gModuleList[i]->Update();
+		gCurTimeMS = millis();
+		gCurTimeUS = micros();
+
+		uint32_t	updateDeltaUS = gCurTimeUS - gModuleList[i]->lastUpdateUS;
+		if(updateDeltaUS >= gModuleList[i]->updateTimeUS)
+		{
+			gModuleList[i]->Update(updateDeltaUS);
+			gModuleList[i]->lastUpdateUS = gCurTimeUS;
+		}
 	}
 }

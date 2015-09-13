@@ -15,11 +15,6 @@ enum
 {
 	eConfigVar_NodeID,
 	eConfigVar_DebugLevel,
-	eConfigVar_TrackWaveformPin,
-	eConfigVar_TrackPowerPin,
-	eConfigVar_ProgramWaveformPin,
-	eConfigVar_ProgramPowerPin,
-	eConfigVar_ProgramCurrentSensePin,
 	eConfigVar_LEDCount,
 
 	eConfigVar_Max = 16

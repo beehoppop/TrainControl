@@ -11,8 +11,9 @@
 
 #include "TCCommon.h"
 #include "TCModule.h"
+#include "TCMPR121.h"
 
-class CModule_ControlSwitch : public CModule
+class CModule_ControlSwitch : public CModule, public ITouchSensor
 {
 public:
 	
@@ -25,13 +26,27 @@ public:
 	
 	void
 	Update(
-		void);
+		uint32_t	inDeltaTimeUS);
+
+	virtual void
+	Touch(
+		int	inTouchID);
+
+	virtual void
+	Release(
+		int	inTouchID);
 
 	void
 	ControlSwitchActivated(
-		uint16_t	inID,
+		uint16_t	inControlSwitchID,
 		uint8_t		inDirection,
 		bool		inBroadcast = false);
+	
+	void
+	ControlSwitchTouchedID(
+		uint16_t	inControlSwitchID,
+		bool		inTouched,
+		bool		inBroadcast);
 
 	bool
 	TableRead(
@@ -43,16 +58,25 @@ public:
 		int8_t				inSrcNode,
 		SMsg_Table const&	inProgram);
 
+	bool
+	TableUpdate(
+		int8_t				inSrcNode,
+		SMsg_Table const&	inProgram);
+
 private:
-	void
-	UpdateTables(
-		void);
+	
+	struct SControlSwitchToTurnoutIDList
+	{
+		uint8_t		count;
+		uint16_t	turnoutIDList[eMaxTurnoutsPerSwitch];
+	};
 
 	SControlSwitchConfig				controlSwitchArray[eMaxControlSwitchCount];
 	SControlSwitchToTurnoutMapConfig	controlSwitchToTurnoutMapArray[eMaxControlSwitchToTurnoutMapCount];
+	uint8_t								touchIDToControlSwitchIndexMap[eMaxControlSwitchCount];
+	SControlSwitchToTurnoutIDList		controlSwitchIDToTurnoutIDMap[eMaxControlSwitchID];
 };
 
 extern CModule_ControlSwitch	gControlSwitch;
 
 #endif
-

@@ -8,6 +8,14 @@
 #include "TCUtilities.h"
 #include "TCAction.h"
 #include "TCAssert.h"
+#include "TCControlSwitch.h"
+#include "TCTurnout.h"
+#include "TCState.h"
+
+enum
+{
+	eMaxDataSize = 8
+};
 
 CModule_CANBus gCANBus;
 
@@ -55,6 +63,8 @@ CModule_CANBus::SendMsg(
 	CAN_message_t	msg;
 
 	//DebugMsg(eDbgLevel_Basic, "%02x TXM src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gNodeID, gNodeID, inDstNode, inMsgType, inMsgFlags);
+
+	MAssert(inMsgSize <= eMaxDataSize);
 
 	msg.id = CANIDFromComponents(gConfig.GetVal(eConfigVar_NodeID), inDstNode, inMsgType, inMsgFlags);
 	msg.ext = 1;
@@ -130,23 +140,39 @@ ProcessCANMsg(
 	switch(msgType)
 	{
 		case eMsgType_ControlSwitch:
-			gAction.ControlSwitch(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_ControlSwitch*)inMsg.buf);
+		{
+			SMsg_ControlSwitch&	msg = (SMsg_ControlSwitch&)inMsg;
+			gControlSwitch.ControlSwitchActivated(msg.id, msg.direction);
 			break;
+		}
 
 		case eMsgType_TrackTurnout:
-			gAction.TrackTurnout(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_TrackTurnout*)inMsg.buf);
+		{
+			SMsg_TrackTurnout&	msg = (SMsg_TrackTurnout&)inMsg;
+			gTurnout.SetTurnoutDirection(msg.id, msg.direction);
 			break;
+		}
+
+		case eMsgType_TurnoutControlSwitchTouch:
+		{
+			SMsg_TurnoutControlSwitchTouch& msg = (SMsg_TurnoutControlSwitchTouch&)inMsg;
+			gTurnout.ControlSwitchTouchedTurnoutID(msg.turnoutID, msg.touched, false);
+			break;
+		}
 
 		case eMsgType_TrackSensor:
-			gAction.TrackSensor(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_TrackSesnor*)inMsg.buf);
+			break;
+
+		case eMsgType_TableWrite:
+			gAction.TableWrite(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_Table*)inMsg.buf);
 			break;
 
 		case eMsgType_TableRead:
 			gAction.TableRead(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_Table*)inMsg.buf);
 			break;
 
-		case eMsgType_TableWrite:
-			gAction.TableWrite(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_Table*)inMsg.buf);
+		case eMsgType_TableUpdate:
+			gAction.TableUpdate(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_Table*)inMsg.buf);
 			break;
 
 		case eMsgType_SerialOut:
@@ -158,18 +184,24 @@ ProcessCANMsg(
 			break;
 
 		case eMsgType_ConfigVar:
-			gAction.ConfigVar(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_ConfigVar*)inMsg.buf);
+		{
+			SMsg_ConfigVar&	msg = (SMsg_ConfigVar&)inMsg;
+			gConfig.SetVal(msg.configVar, msg.value);
 			break;
+		}
 
 		case eMsgType_StateVar:
-			gAction.StateVar(srcNode, gConfig.GetVal(eConfigVar_NodeID), *(SMsg_StateVar*)inMsg.buf);
+		{
+			SMsg_StateVar&	msg = (SMsg_StateVar&)inMsg;
+			gState.SetVal(msg.stateVar, msg.value);
 			break;
+		}
 	}
 }
 
 void
 CModule_CANBus::Update(
-	void)
+	uint32_t	inDeltaTimeUS)
 {
 	CAN_message_t	msg;
 

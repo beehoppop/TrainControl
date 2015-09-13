@@ -1,14 +1,14 @@
 // 
 // 
 // 
-#include <TimerOne.h>
+#include <IntervalTimer.h>
 
 #include "TCAssert.h"
 #include "TCCommon.h"
 #include "TCUtilities.h"
 #include "TCConfig.h"
 #include "TCState.h"
-#include "TCDCCProtocol.h"
+#include "TCDCC.h"
 
 enum
 {
@@ -23,20 +23,21 @@ enum
 	eState_EndPacket,
 };
 
-CModule_DCCProtocol gDCCProtocol;
+CModule_DCC gDCC;
 
-CModule_DCCProtocol::CModule_DCCProtocol(
+CModule_DCC::CModule_DCC(
 	)
 	:
-	CModule(MMakeUID('d', 'c', 'p', 't'), 0)
+	CModule(MMakeUID('d', 'c', 'c', 't'), sizeof(commandConfigList))
 {
 
 }
 
 void
-CModule_DCCProtocol::Setup(
+CModule_DCC::Setup(
 	void)
 {
+#if 0
 	curPacketIndex = 0;
 	curByteIndex = 0;
 	curBitIndex = 0;
@@ -50,12 +51,14 @@ CModule_DCCProtocol::Setup(
 	trackPowerPin = 0xFF;
 
 	memset(transmitBuffer, 0, sizeof(transmitBuffer));
+#endif
 }
 
 void
-CModule_DCCProtocol::Update(
-	void)
+CModule_DCC::Update(
+	uint32_t	inDeltaTimeUS)
 {
+#if 0
 	if(trackWaveformPin != gConfig.GetVal(eConfigVar_TrackWaveformPin) || trackPowerPin != gConfig.GetVal(eConfigVar_TrackPowerPin))
 	{
 		trackWaveformPin = gConfig.GetVal(eConfigVar_TrackWaveformPin);
@@ -92,13 +95,106 @@ CModule_DCCProtocol::Update(
 			}
 		}
 	}
+#endif
+}
+
+void
+CModule_DCC::SetPowerState(
+	uint8_t	inCommandID,	// 0xFF means all command stations
+	bool	inPowerOn)
+{
+
+}
+
+void
+CModule_DCC::EmergencyAllStop(
+	uint16_t	inCommandID)
+{
+
+}
+
+void
+CModule_DCC::ResetAllDecoders(
+	uint16_t	inCommandID)
+{
+
+}
+
+void
+CModule_DCC::EmergencyStop(
+	uint16_t	inCommandID,
+	uint8_t		inAddress)
+{
+
+}
+	
+void
+CModule_DCC::StandardDirection(
+	uint16_t	inCommandID,
+	uint8_t		inAddress,
+	uint8_t		inDirection)
+{
+#if 0
+	SDecoder*	decoder = FindDecoder(inAddress);
+
+	decoder->direction = inDirection;
+	SendStandardSpeedAndDirectionPacket(decoder);
+#endif
+}
+	
+void
+CModule_DCC::StandardSpeed(
+	uint16_t	inCommandID,
+	uint8_t		inAddress,
+	uint8_t		inSpeed)
+{
+#if 0
+	SDecoder*	decoder = FindDecoder(inAddress);
+
+	decoder->speed = inSpeed;
+	SendStandardSpeedAndDirectionPacket(decoder);
+#endif
+}
+
+void
+CModule_DCC::SetOpsMode(
+	uint8_t			inTrackID,
+	bool			inOpsMode)
+{
+
 }
 
 bool
-CModule_DCCProtocol::AddPacket(
+CModule_DCC::TableRead(
+	int8_t				inSrcNode,
+	SMsg_Table const&	inProgram)
+{
+	return false;
+}
+
+bool
+CModule_DCC::TableWrite(
+	int8_t				inSrcNode,
+	SMsg_Table const&	inProgram)
+{
+	return false;
+}
+
+bool
+CModule_DCC::TableUpdate(
+	int8_t				inSrcNode,
+	SMsg_Table const&	inProgram)
+{
+	return false;
+}
+
+bool
+CModule_DCC::AddPacket(
+	uint8_t			inCommandID,
 	uint8_t			inSize,
 	uint8_t const*	inData)
 {
+#if 0
 	uint8_t	targetIndex;
 
 	for(int i = 0; i < eMaxPacketCount; ++i)
@@ -121,13 +217,84 @@ CModule_DCCProtocol::AddPacket(
 	transmitBuffer[targetIndex].size = inSize;
 	memcpy(transmitBuffer[targetIndex].data, inData, inSize);
 
+#endif
 	return true;
 }
 
 bool
-CModule_DCCProtocol::GetNextWaveformBit(
+CModule_DCC::DoServiceModePacket(
+	uint8_t			inTrackID,
+	uint8_t			inSize,
+	uint8_t const*	inData)
+{
+	return true;
+
+}
+
+CModule_DCC::SDecoder*
+CModule_DCC::FindDecoder(
+	uint16_t	inCommandID,
+	uint16_t	inAddress)
+{
+#if 0
+	int	availIndex = 0xFFFF;
+
+	for(int i = 0; i < eMaxCommandStates; ++i)
+	{
+
+	}
+
+	for(int i = 0; i < eMaxDecoders; ++i)
+	{
+		if(decoderArray[i].address == inAddress)
+		{
+			return decoderArray + i;
+		}
+
+		if(availIndex == 0xFFFF && decoderArray[i].address == 0xFFFF)
+		{
+			availIndex = i;
+		}
+	}
+
+	if(availIndex == 0xFFFF)
+	{
+		return NULL;
+	}
+
+	SDecoder*	target = decoderArray + availIndex;
+	target->address = inAddress;
+	target->speed = 0;
+	target->direction = 1;
+#endif
+
+	return NULL;
+}
+
+void
+CModule_DCC::SendStandardSpeedAndDirectionPacket(
+	uint16_t	inCommandID,
+	SDecoder*	inDecoder)
+{
+#if 0
+	uint8_t	data[3];
+
+	uint8_t	dir = inDecoder->direction & 1;
+	uint8_t	speed = inDecoder->speed & 0x1F;
+
+	data[0] = inDecoder->address;
+	data[1] = (dir << 5) | ((speed & 1) << 4) | (speed >> 1);
+	data[2] = data[0] ^ data[1];
+
+	gDCCProtocol.AddPacket(3, data);
+#endif
+}
+
+bool
+CModule_DCC::GetNextWaveformBit(
 	void)
 {
+#if 0
 	if(curState == eState_Preamble)
 	{
 		if(curPreambleBitCount > 0)
@@ -178,14 +345,16 @@ CModule_DCCProtocol::GetNextWaveformBit(
 	}
 
 	MAssert(0);
+#endif
 
 	return true;
 }
 
 void
-CModule_DCCProtocol::SetupNextByte(
+CModule_DCC::SetupNextByte(
 	void)
 {
+#if 0
 	if(curByteIndex >= transmitBuffer[curPacketIndex].size)
 	{
 		SetupNextPacket();
@@ -196,12 +365,14 @@ CModule_DCCProtocol::SetupNextByte(
 	curBitIndex = 0;
 
 	curState = eState_TransmitByte;
+#endif
 }
 
 void
-CModule_DCCProtocol::SetupNextPacket(
+CModule_DCC::SetupNextPacket(
 	void)
 {
+#if 0
 	curState = eState_Preamble;
 	curPreambleBitCount = ePreambleBitCount;
 	curByteIndex = 0;
@@ -218,12 +389,14 @@ CModule_DCCProtocol::SetupNextPacket(
 	}
 
 	curPacketIndex = 0;
+#endif
 }
 
 void
-CModule_DCCProtocol::UpdateWaveform(
+CModule_DCC::UpdateWaveform(
 	void)
 {
+#if 0
 	if(gDCCProtocol.curPhase == 0)
 	{
 		digitalWriteFast(gDCCProtocol.trackWaveformPin, LOW);
@@ -238,4 +411,5 @@ CModule_DCCProtocol::UpdateWaveform(
 		digitalWriteFast(gDCCProtocol.trackWaveformPin, HIGH);
 		gDCCProtocol.curPhase = 0;
 	}
+#endif
 }

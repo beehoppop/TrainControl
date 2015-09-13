@@ -12,37 +12,52 @@
 #include "TCState.h"
 #include "TCSerial.h"
 #include "TCAssert.h"
-#include "TCDCCPacket.h"
+#include "TCDCC.h"
+#include "TCControlSwitch.h"
+#include "TCTurnout.h"
+#include "TCLED.h"
 
 /*
-	Format: [node id] [msg type] [msg specific data]
-
-	[node id] is the numeric node that the msg should be sent to. 255 is broadcast
+	Format: [msg type] [msg specific data]
 
 	[msg type] is one of alive, node_id, control_switch, config_var, state_var, track_sensor, track_turnout, table_write, table_read
+
+
+	Formats for each msg type:
+		alive [node id]
+		node_id set [node id]
+		node_id get
+		control_switch id [position]
+		track_sensor id [1 or 0]
+		track_turnout id [position]
+		config_var [node id] [config var] [value]
+		state_var [node id] [state var] [value]
+		table_write [table type] [node id] [table index] [table specific data]
+		table_read [table type] [node id] [table index]
+		table_update [table type] [node id]
+		led id [led num] on|off
+		dcc_command [command id] power [on|off]
+		dcc_command [command id] allstop
+		dcc_command [command id] dir [address] [forward|reverse]
+		dcc_command [command id] speed [address] [speed]
+		dcc_command [command id] stop [address]
+
+		dcc_command [command id] mode [ops|service]
+
+	Formats for each table write type:
+		table_write control_switch [node id] [table index] [id] [straight pin] [turnout pin] [touch id]
+		table_write track_turnout [node id] [table index] [id] [straight pin] [turnout pin]
+		table_write track_turnout_led_map [node id] [table index] [id] [led num straight 1] [led num turnout 1] [led num straight 2] [led num turnout 2]
+		table_write track_sensor [node id] [table index] [id] [pin]
+		table_write turnout_map [node id] [table index] [control_switch id] [track_turnout id 1] [track_turnout id 2]
+		table_write dcc_command [node id] [table index] [command id] [waveform pin] [power pin] [current sense pin]
+
+	[node id] is the numeric node that the msg should be sent to. 255 is broadcast
 
 	[position] is either straight or turnout
 
 	[table type] is one of control_switch, track_turnout, track_sensor, turnout_map, turnout_led_map
 
-	Formats for each msg type:
-		[node id] alive
-		[node id] node_id set
-		[node id] node_id get
-		[node id] control_switch id [position]
-		[node id] config_var [config var] [value]
-		[node id] state_var [state var] [value]
-		[node id] track_sensor id [1 or 0]
-		[node id] track_turnout id [position]
-		[node id] table_write [table type] [table index] [table specific data]
-		[node id] table_read [table type] [table index]
-
-	Formats for each table type:
-		[node id] table_write control_switch [table index] [id] [straight pin] [turnout pin]
-		[node id] table_write track_turnout [table index] [id] [straight pin] [turnout pin]
-		[node id] table_write track_sensor [table index] [id] [pin]
-		[node id] table_write turnout_map [table index] [control_switch id] [track_turnout id] [invert]
-		[node id] table_write turnout_led_map [table index] [track_turnout id] [straight LED num] [turnout LED num]
 */
 
 class CModule_SerialInput : public CModule
@@ -64,7 +79,7 @@ public:
 
 	virtual void
 	Update(
-		void)
+		uint32_t	inDeltaTimeUS)
 	{
 		int	bytesAvailable = Serial.available();
 		char	tmpBuffer[256];
@@ -87,7 +102,7 @@ public:
 
 				if(ProcessSerialMsg(charBuffer) == false)
 				{
-					Serial.write("Failed\n");
+					Serial.write("Command Failed\n");
 				}
 			}
 			else
@@ -99,31 +114,37 @@ public:
 
 	bool
 	ProcessSerialMsg_Alive(
-		int inNodeID)
+		char*	inComponents[])
 	{
-		return gAction.Alive(gConfig.GetVal(eConfigVar_NodeID), inNodeID);
+		int nodeID = atoi(inComponents[0]);
+
+		return gAction.Alive(gConfig.GetVal(eConfigVar_NodeID), nodeID);
 	}
 
 	bool
-	ProcessSerialMsg_NodeIDWrite(
-		int	inNodeID)
+	ProcessSerialMsg_NodeID(
+		char*	inComponents[])
 	{
-		gConfig.SetVal(eConfigVar_NodeID, inNodeID);
-		Serial.printf("CC:%d id\n", inNodeID);
-		return true;
-	}
-
-	bool
-	ProcessSerialMsg_NodeIDRead(
-		int	inNodeID)
-	{
-		Serial.printf("CC:%d id\n", gConfig.GetVal(eConfigVar_NodeID));
-		return true;
+		if(strcmp(inComponents[0], "set") == 0)
+		{
+			int nodeID = atoi(inComponents[1]);
+			gConfig.SetVal(eConfigVar_NodeID, nodeID);
+			Serial.printf("CC:%d id\n", nodeID);
+			return true;
+		}
+		else if(strcmp(inComponents[0], "get") == 0)
+		{
+			Serial.printf("CC:%d id\n", gConfig.GetVal(eConfigVar_NodeID));
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 	bool
 	ProcessSerialMsg_ControlSwitch(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 		SMsg_ControlSwitch	msg;
@@ -134,94 +155,122 @@ public:
 			return false;
 		}
 
-		if(!IsStrAlpha(inComponents[1]))
-		{
-			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
-			return false;
-		}
-
 		msg.timeMS = gCurTimeMS;
 		msg.id = atoi(inComponents[0]);
 		msg.direction = GetTurnoutDirection(inComponents[1]);
 		if(msg.direction == 0xFF)
 		{
+			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
+		gControlSwitch.ControlSwitchActivated(msg.id, msg.direction);
+		gCANBus.SendMsg(0xFF, eMsgType_ControlSwitch, 0, sizeof(msg), &msg);
 
-		return gAction.ControlSwitch(gConfig.GetVal(eConfigVar_NodeID), inNodeID, msg);
+		return true;
 	}
 
 	bool
 	ProcessSerialMsg_ConfigVar(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 		SMsg_ConfigVar	msg;
 
-		if(strcmp(inComponents[0], "debug_level") == 0)
+		if(strcmp(inComponents[1], "debug_level") == 0)
 		{
 			msg.configVar = eConfigVar_DebugLevel;
 		}
-		else if(strcmp(inComponents[0], "track_waveform_pin") == 0)
+		else if(strcmp(inComponents[1], "led_count") == 0)
 		{
-			msg.configVar = eConfigVar_TrackWaveformPin;
-		}
-		else if(strcmp(inComponents[0], "track_power_pin") == 0)
-		{
-			msg.configVar = eConfigVar_TrackPowerPin;
-		}
-		else if(strcmp(inComponents[0], "program_waveform_pin") == 0)
-		{
-			msg.configVar = eConfigVar_ProgramWaveformPin;
-		}
-		else if(strcmp(inComponents[0], "program_power_pin") == 0)
-		{
-			msg.configVar = eConfigVar_ProgramPowerPin;
-		}
-		else if(strcmp(inComponents[0], "program_currentsense_pin") == 0)
-		{
-			msg.configVar = eConfigVar_ProgramCurrentSensePin;
+			msg.configVar = eConfigVar_LEDCount;
 		}
 		else
 		{
-			Serial.printf("Expecting valid config var but got \"%s\"\n", inComponents[0]);
+			Serial.printf("Expecting valid config var but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 
-		msg.value = atoi(inComponents[1]);
+		int nodeID = atoi(inComponents[0]);
+		msg.value = atoi(inComponents[2]);
 
-		return gAction.ConfigVar(gConfig.GetVal(eConfigVar_NodeID), inNodeID, msg);
+		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+		{
+			gConfig.SetVal(msg.configVar, msg.value);
+		}
+		else
+		{
+			gCANBus.SendMsg(nodeID, eMsgType_ConfigVar, 0, sizeof(msg), &msg);
+		}
+
+		return true;
+	}
+
+
+	bool
+	ProcessSerialMsg_LED(
+		char*	inComponents[])
+	{
+		if(strcmp(inComponents[0], "id") == 0)
+		{
+			int ledNum = atoi(inComponents[1]);
+
+			if(strcmp(inComponents[2], "on") == 0)
+			{
+				gLED.SetColor(ledNum, 0, 0x0, 0xff, 1000.0f);
+				gLED.PulseOnOff(ledNum, 4.0, true);
+			}
+			else if(strcmp(inComponents[2], "off") == 0)
+			{
+				gLED.SetColor(ledNum, 0, 0, 0, 1000.0f);
+				gLED.PulseOnOff(ledNum, 4.0, false);
+			}
+			else
+			{
+				Serial.printf("invalid led command, expected on or off \"%s\"\n", inComponents[2]);
+				return false;
+			}
+		}
+		else
+		{
+			Serial.printf("invalid led command \"%s\"\n", inComponents[0]);
+			return false;
+		}
+
+		return true;
 	}
 
 	bool
 	ProcessSerialMsg_StateVar(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 		SMsg_StateVar	msg;
 
-		if(strcmp(inComponents[0], "track_power") == 0)
+		if(strcmp(inComponents[1], "some_state_var") == 0)
 		{
-			msg.stateVar = eStateVar_TrackPower;
-		}
-		else if(strcmp(inComponents[0], "program_power") == 0)
-		{
-			msg.stateVar = eStateVar_ProgramPower;
+			//msg.stateVar = eStateVar_SomeVar;
 		}
 		else
 		{
-			Serial.printf("Expecting valid state var but got \"%s\"\n", inComponents[0]);
+			Serial.printf("Expecting valid state var but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 
-		msg.value = atoi(inComponents[1]);
+		int nodeID = atoi(inComponents[0]);
+		msg.value = atoi(inComponents[2]);
 
-		return gAction.StateVar(gConfig.GetVal(eConfigVar_NodeID), inNodeID, msg);
+		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+		{
+			gConfig.SetVal(msg.stateVar, msg.value);
+		}
+		else
+		{
+			gCANBus.SendMsg(nodeID, eMsgType_StateVar, 0, sizeof(msg), &msg);
+		}
+
+		return true;
 	}
 
 	bool
 	ProcessSerialMsg_TrackSensor(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 	
@@ -230,7 +279,6 @@ public:
 
 	bool
 	ProcessSerialMsg_TrackTurnout(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 		SMsg_TrackTurnout	msg;
@@ -241,26 +289,22 @@ public:
 			return false;
 		}
 
-		if(!IsStrAlpha(inComponents[1]))
-		{
-			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
-			return false;
-		}
-
 		msg.timeMS = gCurTimeMS;
 		msg.id = atoi(inComponents[0]);
 		msg.direction = GetTurnoutDirection(inComponents[1]);
 		if(msg.direction == 0xFF)
 		{
+			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
+		gTurnout.SetTurnoutDirection(msg.id, msg.direction);
+		gCANBus.SendMsg(0xFF, eMsgType_TrackTurnout, 0, sizeof(msg), &msg);
 
-		return gAction.TrackTurnout(gConfig.GetVal(eConfigVar_NodeID), inNodeID, msg);
+		return true;
 	}
 
 	bool
 	ProcessSerialMsg_TableWrite(
-		int		inNodeID,
 		char*	inComponents[])
 	{
 		if(!IsStrAlpha(inComponents[0]))
@@ -271,49 +315,58 @@ public:
 	
 		if(!IsStrDigit(inComponents[1]))
 		{
-			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[1]);
+			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 	
+		if(!IsStrDigit(inComponents[2]))
+		{
+			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[2]);
+			return false;
+		}
+	
+		int nodeID = atoi(inComponents[1]);
+
 		SMsg_Table	tableMsg;
 
-		tableMsg.index = atoi(inComponents[1]);
+		tableMsg.index = atoi(inComponents[2]);
 
 		if(strcmp(inComponents[0], "control_switch") == 0)
 		{
-			// control_switch [table index] [cs id] [straight pin] [turnout pin] 
-			if(!IsStrDigit(inComponents[2]))
-			{
-				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[2]);
-				return false;
-			}
+			// control_switch [table index] [cs id] [straight pin] [turnout pin] [touch id]
 			if(!IsStrDigit(inComponents[3]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[3]);
+				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[3]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[4]))
 			{
 				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[4]);
+				return false;
+			}
+			if(!IsStrDigit(inComponents[5]))
+			{
+				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
+				return false;
+			}
+			if(!IsStrDigit(inComponents[6]))
+			{
+				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
 				return false;
 			}
 
 			tableMsg.type = eTableType_ControlSwitch;
-			tableMsg.controlSwitch.id = atoi(inComponents[2]);
-			tableMsg.controlSwitch.straightDInPin = atoi(inComponents[3]);
-			tableMsg.controlSwitch.turnDInPin = atoi(inComponents[4]);
+			tableMsg.controlSwitch.id = atoi(inComponents[3]);
+			tableMsg.controlSwitch.straightDInPin = atoi(inComponents[4]);
+			tableMsg.controlSwitch.turnDInPin = atoi(inComponents[5]);
+			tableMsg.controlSwitch.touchID = atoi(inComponents[6]);
 		}
 		else if(strcmp(inComponents[0], "track_turnout") == 0)
 		{
 			// track_turnout [table index] [cs id] [straight pin] [turnout pin] 
-			if(!IsStrDigit(inComponents[2]))
-			{
-				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[2]);
-				return false;
-			}
 			if(!IsStrDigit(inComponents[3]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[3]);
+				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[3]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[4]))
@@ -321,49 +374,70 @@ public:
 				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[4]);
 				return false;
 			}
+			if(!IsStrDigit(inComponents[5]))
+			{
+				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
+				return false;
+			}
 
 			tableMsg.type = eTableType_TrackTurnout;
-			tableMsg.trackTurnout.id = atoi(inComponents[2]);
-			tableMsg.trackTurnout.straightDOutPin = atoi(inComponents[3]);
-			tableMsg.trackTurnout.turnDOutPin = atoi(inComponents[4]);
+			tableMsg.trackTurnout.id = atoi(inComponents[3]);
+			tableMsg.trackTurnout.straightDOutPin = atoi(inComponents[4]);
+			tableMsg.trackTurnout.turnDOutPin = atoi(inComponents[5]);
 		}
 		else if(strcmp(inComponents[0], "track_sensor") == 0)
 		{
 			// track_sensor [table index] [ts id] [pin] 
-			if(!IsStrDigit(inComponents[2]) || !IsStrDigit(inComponents[3]))
+			if(!IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]))
 			{
 				return false;
 			}
 
 			tableMsg.type = eTableType_TrackSensor;
-			tableMsg.trackSensor.id = atoi(inComponents[2]);
-			tableMsg.trackSensor.dInPin = atoi(inComponents[3]);
+			tableMsg.trackSensor.id = atoi(inComponents[3]);
+			tableMsg.trackSensor.dInPin = atoi(inComponents[4]);
 		}
 		else if(strcmp(inComponents[0], "turnout_map") == 0)
 		{
 			// turnout_map [table index] [cs id] [tt id] [invert]
-			if(!IsStrDigit(inComponents[2]) || !IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]))
+			if(!IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]) || !IsStrDigit(inComponents[5]))
 			{
 				return false;
 			}
 
 			tableMsg.type = eTableType_ControlSwitchToTurnoutMap;
-			tableMsg.trackTurnoutMap.controlSwitchID = atoi(inComponents[2]);
-			tableMsg.trackTurnoutMap.trackTurnoutID = atoi(inComponents[3]);
-			tableMsg.trackTurnoutMap.invert =  atoi(inComponents[4]) ? 1 : 0;
+			tableMsg.trackTurnoutMap.controlSwitchID = atoi(inComponents[3]);
+			tableMsg.trackTurnoutMap.turnout1ID = atoi(inComponents[4]);
+			tableMsg.trackTurnoutMap.turnout2ID =  atoi(inComponents[5]);
 		}
-		else if(strcmp(inComponents[0], "turnout_led_map") == 0)
+		else if(strcmp(inComponents[0], "track_turnout_led_map") == 0)
 		{
-			// turnout_led_map [table index] [tt id] [straight LED num] [turnout LED num]
-			if(!IsStrDigit(inComponents[2]) || !IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]))
+			// track_turnout_led_map [table index] [id] [led num straight 1] [led num turnout 1] [led num straight 2] [led num turnout 2]
+			if(!IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]) || !IsStrDigit(inComponents[5]) || !IsStrDigit(inComponents[6]) || !IsStrDigit(inComponents[7]))
 			{
 				return false;
 			}
 
 			tableMsg.type = eTableType_TrackTurnoutLEDMap;
-			tableMsg.turnoutLED.trackTurnoutID = atoi(inComponents[2]);
-			tableMsg.turnoutLED.straightLEDNum = atoi(inComponents[3]);
-			tableMsg.turnoutLED.turnoutLEDNum = atoi(inComponents[4]);
+			tableMsg.trackTurnoutLEDMap.turnoutID = atoi(inComponents[3]);
+			tableMsg.trackTurnoutLEDMap.straightLEDNum[0] = atoi(inComponents[4]);
+			tableMsg.trackTurnoutLEDMap.turnoutLEDNum[0] = atoi(inComponents[5]);
+			tableMsg.trackTurnoutLEDMap.straightLEDNum[1] = atoi(inComponents[6]);
+			tableMsg.trackTurnoutLEDMap.turnoutLEDNum[1] = atoi(inComponents[7]);
+		}
+		else if(strcmp(inComponents[0], "dcc_command") == 0)
+		{
+			// dcc_command [node id] [table index] [command id]
+			if(!IsStrDigit(inComponents[3]))
+			{
+				return false;
+			}
+
+			tableMsg.type = eTableType_DCC;
+			tableMsg.dccCommand.commandID = atoi(inComponents[3]);
+			tableMsg.dccCommand.waveformPin = atoi(inComponents[4]);
+			tableMsg.dccCommand.powerPin = atoi(inComponents[5]);
+			tableMsg.dccCommand.currentSensePin = atoi(inComponents[6]);
 		}
 		else
 		{
@@ -371,12 +445,11 @@ public:
 			return false;
 		}
 
-		return gAction.TableWrite(gConfig.GetVal(eConfigVar_NodeID), inNodeID, tableMsg);
+		return gAction.TableWrite(gConfig.GetVal(eConfigVar_NodeID), nodeID, tableMsg);
 	}
 
 	bool
 	ProcessSerialMsg_TableRead(
-		int		inNodeID,
 		char *	inComponents[])
 	{
 		if(!IsStrAlpha(inComponents[0]))
@@ -387,10 +460,18 @@ public:
 	
 		if(!IsStrDigit(inComponents[1]))
 		{
-			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[1]);
+			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 	
+		if(!IsStrDigit(inComponents[2]))
+		{
+			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[2]);
+			return false;
+		}
+	
+		int nodeID = atoi(inComponents[1]);
+
 		SMsg_Table	tableMsg;
 
 		tableMsg.index = atoi(inComponents[1]);
@@ -415,41 +496,114 @@ public:
 		{
 			tableMsg.type = eTableType_TrackTurnoutLEDMap;
 		}
+		else if(strcmp(inComponents[0], "dcc_command") == 0)
+		{
+			tableMsg.type = eTableType_DCC;
+		}
 		else
 		{
 			Serial.printf("Expecting valid table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
-		return gAction.TableRead(gConfig.GetVal(eConfigVar_NodeID), inNodeID, tableMsg);
+		return gAction.TableRead(gConfig.GetVal(eConfigVar_NodeID), nodeID, tableMsg);
 	}
 
+	bool
+	ProcessSerialMsg_TableUpdate(
+		char *	inComponents[])
+	{
+		if(!IsStrAlpha(inComponents[0]))
+		{
+			Serial.printf("Expecting alpha table type but got \"%s\"\n", inComponents[0]);
+			return false;
+		}
+	
+		if(!IsStrDigit(inComponents[1]))
+		{
+			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
+			return false;
+		}
+	
+		int nodeID = atoi(inComponents[1]);
+
+		SMsg_Table	tableMsg;
+
+		tableMsg.index = atoi(inComponents[1]);
+
+		if(strcmp(inComponents[0], "control_switch") == 0)
+		{
+			tableMsg.type = eTableType_ControlSwitch;
+		}
+		else if(strcmp(inComponents[0], "track_turnout") == 0)
+		{
+			tableMsg.type = eTableType_TrackTurnout;
+		}
+		else if(strcmp(inComponents[0], "track_sensor") == 0)
+		{
+			tableMsg.type = eTableType_TrackSensor;
+		}
+		else if(strcmp(inComponents[0], "turnout_map") == 0)
+		{
+			tableMsg.type = eTableType_ControlSwitchToTurnoutMap;
+		}
+		else if(strcmp(inComponents[0], "turnout_led_map") == 0)
+		{
+			tableMsg.type = eTableType_TrackTurnoutLEDMap;
+		}
+		else if(strcmp(inComponents[0], "dcc_command") == 0)
+		{
+			tableMsg.type = eTableType_DCC;
+		}
+		else
+		{
+			Serial.printf("Expecting valid table type but got \"%s\"\n", inComponents[0]);
+			return false;
+		}
+
+		return gAction.TableUpdate(gConfig.GetVal(eConfigVar_NodeID), nodeID, tableMsg);
+	}
 
 	bool
-	ProcessSerialMsg_Throttle(
-		int		inNodeID,
+	ProcessSerialMsg_DCCCommand(
 		char *	inComponents[])
 	{
 		uint16_t	address;
 		uint16_t	value;
 
-		if(strcmp(inComponents[0], "speed") == 0)
+		if(!IsStrDigit(inComponents[0]))
 		{
-			address = atoi(inComponents[1]);
-			value = atoi(inComponents[2]);
-			if(address < 256)
+			Serial.printf("Expecting numeric command buffer ID but got \"%s\"\n", inComponents[0]);
+			return false;
+		}
+
+		int	commandID = atoi(inComponents[0]);
+
+		if(strcmp(inComponents[1], "power") == 0)
+		{
+			if(strcmp(inComponents[2], "on") == 0)
 			{
-				gDCCPacket.StandardSpeed((uint8_t)address, (uint8_t)value);
+				gDCC.SetPowerState(commandID, true);
+				return true;
+			}
+			else if(strcmp(inComponents[2], "off") == 0)
+			{
+				gDCC.SetPowerState(commandID, false);
+				return true;
 			}
 		}
-		else if(strcmp(inComponents[0], "dir") == 0)
+		else if(strcmp(inComponents[1], "allstop") == 0)
 		{
-			address = atoi(inComponents[1]);
-			if(strcmp(inComponents[2], "for") == 0)
+		
+		}
+		else if(strcmp(inComponents[1], "dir") == 0)
+		{
+			address = atoi(inComponents[2]);
+			if(strcmp(inComponents[3], "for") == 0)
 			{
 				value = 1;
 			}
-			else if(strcmp(inComponents[2], "rev") == 0)
+			else if(strcmp(inComponents[3], "rev") == 0)
 			{
 				value = 0;
 			}
@@ -459,16 +613,38 @@ public:
 			}
 			if(address < 256)
 			{
-				gDCCPacket.StandardDirection((uint8_t)address, (uint8_t)value);
+				gDCC.StandardDirection(commandID, (uint8_t)address, (uint8_t)value);
 			}
 		}
-		else if(strcmp(inComponents[0], "stop") == 0)
+		else if(strcmp(inComponents[1], "speed") == 0)
+		{
+			address = atoi(inComponents[2]);
+			value = atoi(inComponents[3]);
+			if(address < 256)
+			{
+				gDCC.StandardSpeed(commandID, (uint8_t)address, (uint8_t)value);
+			}
+		}
+		else if(strcmp(inComponents[1], "stop") == 0)
 		{
 		
 		}
-		else if(strcmp(inComponents[0], "allstop") == 0)
+		else if(strcmp(inComponents[1], "mode") == 0)
 		{
-		
+			if(strcmp(inComponents[2], "ops") == 0)
+			{
+				gDCC.SetOpsMode(commandID, true);
+				return true;
+			}
+			else if(strcmp(inComponents[2], "service") == 0)
+			{
+				gDCC.SetOpsMode(commandID, false);
+				return true;
+			}
+		}
+		else if(strcmp(inComponents[1], "program") == 0)
+		{
+
 		}
 		
 		return false;
@@ -500,63 +676,62 @@ public:
 
 		components[curCompIndex] = NULL;
 
-		if(!IsStrDigit(components[0]))
+		if(!IsStrAlpha(components[0]))
 		{
-			Serial.printf("expecting node id but got \"%s\"\n", components[0]);
+			Serial.printf("expecting string but got \"%s\"\n", components[0]);
 			return false;
 		}
 
-		int nodeID = atoi(components[0]);
+		if(strcmp(components[0], "alive") == 0)
+		{
+			return ProcessSerialMsg_Alive(components + 1);
+		}
+		else if(strcmp(components[0], "node_id") == 0)
+		{
+			return ProcessSerialMsg_NodeID(components + 1);
+		}
+		else if(strcmp(components[0], "control_switch") == 0)
+		{
+			return ProcessSerialMsg_ControlSwitch(components + 1);
+		}
+		else if(strcmp(components[0], "config_var") == 0)
+		{
+			return ProcessSerialMsg_ConfigVar(components + 1);
+		}
+		else if(strcmp(components[0], "led") == 0)
+		{
+			return ProcessSerialMsg_LED(components + 1);
+		}
+		else if(strcmp(components[0], "state_var") == 0)
+		{
+			return ProcessSerialMsg_StateVar(components + 1);
+		}
+		else if(strcmp(components[0], "track_sensor") == 0)
+		{
+			return ProcessSerialMsg_TrackSensor(components + 1);
+		}
+		else if(strcmp(components[0], "track_turnout") == 0)
+		{
+			return ProcessSerialMsg_TrackTurnout(components + 1);
+		}
+		else if(strcmp(components[0], "table_write") == 0)
+		{
+			return ProcessSerialMsg_TableWrite(components + 1);
+		}
+		else if(strcmp(components[0], "table_read") == 0)
+		{
+			return ProcessSerialMsg_TableRead(components + 1);
+		}
+		else if(strcmp(components[0], "table_update") == 0)
+		{
+			return ProcessSerialMsg_TableUpdate(components + 1);
+		}
+		else if(strcmp(components[0], "dcc_command") == 0)
+		{
+			return ProcessSerialMsg_DCCCommand(components + 1);
+		}
 
-		if(strcmp(components[1], "alive") == 0)
-		{
-			return ProcessSerialMsg_Alive(nodeID);
-		}
-		else if(strcmp(components[1], "node_id") == 0)
-		{
-			if(strcmp(components[2], "set") == 0)
-			{
-				return ProcessSerialMsg_NodeIDWrite(nodeID);
-			}
-			else if(strcmp(components[2], "get") == 0)
-			{
-				return ProcessSerialMsg_NodeIDRead(nodeID);
-			}
-		}
-		else if(strcmp(components[1], "control_switch") == 0)
-		{
-			return ProcessSerialMsg_ControlSwitch(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "config_var") == 0)
-		{
-			return ProcessSerialMsg_ConfigVar(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "state_var") == 0)
-		{
-			return ProcessSerialMsg_ConfigVar(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "track_sensor") == 0)
-		{
-			return ProcessSerialMsg_TrackSensor(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "track_turnout") == 0)
-		{
-			return ProcessSerialMsg_TrackTurnout(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "table_write") == 0)
-		{
-			return ProcessSerialMsg_TableWrite(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "table_read") == 0)
-		{
-			return ProcessSerialMsg_TableRead(nodeID, components + 2);
-		}
-		else if(strcmp(components[1], "throttle") == 0)
-		{
-			return ProcessSerialMsg_Throttle(nodeID, components + 2);
-		}
-
-		Serial.printf("expecting valid command but got \"%s\"\n", components[1]);
+		Serial.printf("expecting valid command but got \"%s\"\n", components[0]);
 
 		return false;
 	}

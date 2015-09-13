@@ -34,36 +34,6 @@ public:
 		uint8_t	inDstNodeID);
 
 	bool
-	ControlSwitch(
-		uint8_t						inSrcNodeID,
-		uint8_t						inDstNodeID,
-		SMsg_ControlSwitch const&	inControlSwitch);
-
-	bool
-	TrackTurnout(
-		uint8_t						inSrcNodeID,
-		uint8_t						inDstNodeID,
-		SMsg_TrackTurnout const&	inTrackTurnout);
-
-	bool
-	TrackSensor(
-		uint8_t					inSrcNodeID,
-		uint8_t					inDstNodeID,
-		SMsg_TrackSesnor const&	inTrackSensor);
-
-	bool
-	ConfigVar(
-		uint8_t					inSrcNodeID,
-		uint8_t					inDstNodeID,
-		SMsg_ConfigVar const&	inConfigVar);
-
-	bool
-	StateVar(
-		uint8_t					inSrcNodeID,
-		uint8_t					inDstNodeID,
-		SMsg_StateVar const&	inConfigVar);
-
-	bool
 	TableWrite(
 		uint8_t				inSrcNodeID,
 		uint8_t				inDstNodeID,
@@ -71,6 +41,12 @@ public:
 
 	bool
 	TableRead(
+		uint8_t				inSrcNodeID,
+		uint8_t				inDstNodeID,
+		SMsg_Table const&	inProgram);
+
+	bool
+	TableUpdate(
 		uint8_t				inSrcNodeID,
 		uint8_t				inDstNodeID,
 		SMsg_Table const&	inProgram);
