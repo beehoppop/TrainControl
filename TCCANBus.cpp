@@ -62,7 +62,7 @@ CModule_CANBus::SendMsg(
 {
 	CAN_message_t	msg;
 
-	//DebugMsg(eDbgLevel_Basic, "%02x TXM src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gNodeID, gNodeID, inDstNode, inMsgType, inMsgFlags);
+	//DebugMsg(eDbgLevel_Basic, "CAN: %02x TXM src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gNodeID, gNodeID, inDstNode, inMsgType, inMsgFlags);
 
 	MAssert(inMsgSize <= eMaxDataSize);
 
@@ -186,7 +186,27 @@ ProcessCANMsg(
 		case eMsgType_ConfigVar:
 		{
 			SMsg_ConfigVar&	msg = (SMsg_ConfigVar&)inMsg;
-			gConfig.SetVal(msg.configVar, msg.value);
+
+			if(msg.setVar)
+			{
+				gConfig.SetVal(msg.configVar, msg.value);
+				gAction.SendSerial(
+					gConfig.GetVal(eConfigVar_NodeID),
+					"CC:%d config_var set %d %d\n", 
+					gConfig.GetVal(eConfigVar_NodeID),
+					msg.configVar,
+					msg.value);
+			}
+			else
+			{
+				uint8_t	val = gConfig.GetVal(msg.configVar);
+				gAction.SendSerial(
+					gConfig.GetVal(eConfigVar_NodeID),
+					"CC:%d config_var get %d %d\n", 
+					gConfig.GetVal(eConfigVar_NodeID),
+					msg.configVar,
+					val);
+			}
 			break;
 		}
 
@@ -196,6 +216,10 @@ ProcessCANMsg(
 			gState.SetVal(msg.stateVar, msg.value);
 			break;
 		}
+
+		case eMsgType_Restart:
+			CPU_RESTART();
+			break;
 	}
 }
 

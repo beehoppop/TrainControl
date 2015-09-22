@@ -51,6 +51,11 @@ CLEDClass::Setup(
 	void)
 {
 	gNumLEDs = gConfig.GetVal(eConfigVar_LEDCount);
+	if(gNumLEDs > eMaxLEDs)
+	{
+		gNumLEDs = eMaxLEDs;
+	}
+
 	FastLED.addLeds<WS2812, eLEDDataPin>(gFastLEDData, gNumLEDs);
 }
 
@@ -60,7 +65,7 @@ CLEDClass::Update(
 {
 	double	curMS = (double)gCurTimeMS;
 
-	//DebugMsg(eDbgLevel_Verbose, "updating %u\n", gCurTimeMS);
+	//DebugMsg(eDbgLevel_Verbose, "LED: updating %u\n", gCurTimeMS);
 
 	for(uint32_t itr = 0; itr < gNumLEDs; ++itr)
 	{
@@ -94,11 +99,11 @@ CLEDClass::Update(
 		{
 			float	scaleFactor = (cos((curMS - curState->pulseStartTime) / 1000.0 * curState->pulsesPerSecond * PI * 2) + 1.0f) / 2.0f;
 			
-			DebugMsg(eDbgLevel_Verbose, "pulse scale %d %d %f\n", itr, inDeltaTimeUS, scaleFactor);
+			//DebugMsg(eDbgLevel_Verbose, "LED: pulse scale %d %d %f\n", itr, inDeltaTimeUS, scaleFactor);
 
 			if(curState->pulsingTransitionOff && scaleFactor > 0.99f)
 			{
-				DebugMsg(eDbgLevel_Verbose, "pulse off %d\n", itr);
+				DebugMsg(eDbgLevel_Verbose, "LED: pulse off %d\n", itr);
 				curState->pulsing = false;
 				curState->pulsingTransitionOff = false;
 			}
@@ -130,7 +135,7 @@ CLEDClass::SetColor(
 	uint8_t	inBlue,
 	float	inTransitionTimeMS)
 {
-	//DebugMsg(eDbgLevel_Basic, "Setting LED color %d\n", inLEDIndex);
+	DebugMsg(eDbgLevel_Basic, "LED: Setting %d to color %x %x %x trans %f\n", inLEDIndex, inRed, inGreen, inBlue, inTransitionTimeMS);
 
 	if(inTransitionTimeMS > 0)
 	{
@@ -156,7 +161,7 @@ CLEDClass::PulseOnOff(
 	float		inPulsesPerSecond,
 	bool		inPulseOn)
 {
-	DebugMsg(eDbgLevel_Basic, "Setting pulse %d %d\n", inLEDIndex, inPulseOn);
+	DebugMsg(eDbgLevel_Basic, "LED: Setting  %d to pulse %d %f\n", inLEDIndex, inPulseOn, inPulsesPerSecond);
 
 	if(inPulseOn)
 	{

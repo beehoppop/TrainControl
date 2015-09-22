@@ -103,78 +103,66 @@ private:
 		uint8_t	data[eMaxPacketSize];
 	};
 
-	struct SCommandConfig
-	{
-		uint16_t	controllerID;
-		uint8_t		waveformPin;
-		uint8_t		powerPin;
-		uint8_t		currentSense;
-	};
-
 	struct SCommandState
 	{
-		uint16_t	controllerID;
-
 		bool	opsMode;
 		bool	power;
 		bool	reverse;
 
-		uint8_t	curPacketIndex;
-		uint8_t	curByteIndex;
-		uint8_t	curBitIndex;
-		uint8_t	curPreambleBitCount;
-		uint8_t	curByte;
-		uint8_t	curPhase;
-		uint8_t	curState;
-		uint8_t	nextPacketIndex;
-		SPacket	transmitBuffer[eMaxPacketCount];
+		uint8_t		curPacketIndex;
+		uint8_t		curByteIndex;
+		uint8_t		curBitIndex;
+		uint8_t		curPreambleBitCount;
+		uint8_t		curByte;
+		uint8_t		curPhase;
+		uint8_t		curState;
+		uint8_t		curBit;
+		uint8_t		nextPacketIndex;
+		SPacket		transmitBuffer[eMaxPacketCount];
 		SDecoder	decoderArray[eMaxDecoders];
+
+		void
+		Reset(
+			void);
+
+		bool
+		AddPacket(
+			uint8_t			inSize,
+			uint8_t const*	inData);
+
+		bool
+		DoServiceModePacket(
+			uint8_t			inSize,
+			uint8_t const*	inData);
+
+		SDecoder*
+		FindDecoder(
+			uint16_t	inAddress);
+
+		void
+		SendStandardSpeedAndDirectionPacket(
+			SDecoder*	inDecoder);
+
+		bool
+		GetNextWaveformBit(
+			void);
 	};
 
-	bool
-	AddPacket(
-		uint8_t			inCommandID,
-		uint8_t			inSize,
-		uint8_t const*	inData);
-
-	bool
-	DoServiceModePacket(
-		uint8_t			inCommandID,
-		uint8_t			inSize,
-		uint8_t const*	inData);
-
-	SDecoder*
-	FindDecoder(
-		uint16_t	inCommandID,
-		uint16_t	inAddress);
-
-	void
-	SendStandardSpeedAndDirectionPacket(
-		uint16_t	inCommandID,
-		SDecoder*	inDecoder);
-
-	bool
-	GetNextWaveformBit(
-		void);
-
-	void
-	SetupNextByte(
-		void);
-
-	void
-	SetupNextPacket(
-		void);
 
 	static void
 	UpdateWaveform(
 		void);
 
+	int
+	FindIndexFromID(
+		uint16_t	inCommandID);
+
 	uint8_t	signalPulse;
 	bool	isMaster;
 
-	IntervalTimer	masterTimer;
-	SCommandConfig	commandConfigList[eMaxCommandStations];
-	SCommandState	commandStateList[eMaxCommandStations];
+	IntervalTimer			masterTimer;
+	SMsg_DCCCommandConfig	commandConfigList[eMaxCommandStations];
+	SCommandState			commandStateList[eMaxCommandStations];
 };
 
 extern CModule_DCC gDCC;

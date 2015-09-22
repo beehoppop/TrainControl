@@ -30,7 +30,7 @@
 		control_switch id [position]
 		track_sensor id [1 or 0]
 		track_turnout id [position]
-		config_var [node id] [config var] [value]
+		config_var set|get [node id] [config var] [value]
 		state_var [node id] [state var] [value]
 		table_write [table type] [node id] [table index] [table specific data]
 		table_read [table type] [node id] [table index]
@@ -175,11 +175,11 @@ public:
 	{
 		SMsg_ConfigVar	msg;
 
-		if(strcmp(inComponents[1], "debug_level") == 0)
+		if(strcmp(inComponents[2], "debug_level") == 0)
 		{
 			msg.configVar = eConfigVar_DebugLevel;
 		}
-		else if(strcmp(inComponents[1], "led_count") == 0)
+		else if(strcmp(inComponents[2], "led_count") == 0)
 		{
 			msg.configVar = eConfigVar_LEDCount;
 		}
@@ -189,16 +189,46 @@ public:
 			return false;
 		}
 
-		int nodeID = atoi(inComponents[0]);
-		msg.value = atoi(inComponents[2]);
+		int nodeID = atoi(inComponents[1]);
+		msg.value = atoi(inComponents[3]);
 
-		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+		if(strcmp(inComponents[0], "set") == 0)
 		{
-			gConfig.SetVal(msg.configVar, msg.value);
+			msg.setVar = 1;
+			if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+			{
+				gConfig.SetVal(msg.configVar, msg.value);
+				Serial.printf(
+					"CC:%d config_var set %d %d\n", 
+					nodeID,
+					msg.configVar,
+					msg.value);
+			}
+			else
+			{
+				gCANBus.SendMsg(nodeID, eMsgType_ConfigVar, 0, sizeof(msg), &msg);
+			}
+		}
+		else if(strcmp(inComponents[0], "get") == 0)
+		{
+			msg.setVar = 0;
+			if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+			{
+				uint8_t val = gConfig.GetVal(msg.configVar);
+				Serial.printf(
+					"CC:%d config_var get %d %d\n", 
+					nodeID,
+					msg.configVar,
+					val);
+			}
+			else
+			{
+				gCANBus.SendMsg(nodeID, eMsgType_ConfigVar, 0, sizeof(msg), &msg);
+			}
 		}
 		else
 		{
-			gCANBus.SendMsg(nodeID, eMsgType_ConfigVar, 0, sizeof(msg), &msg);
+			return false;
 		}
 
 		return true;
@@ -215,7 +245,7 @@ public:
 
 			if(strcmp(inComponents[2], "on") == 0)
 			{
-				gLED.SetColor(ledNum, 0, 0x0, 0xff, 1000.0f);
+				gLED.SetColor(ledNum, 0xff, 0xff, 0xff, 1000.0f);
 				gLED.PulseOnOff(ledNum, 4.0, true);
 			}
 			else if(strcmp(inComponents[2], "off") == 0)
@@ -650,6 +680,22 @@ public:
 		return false;
 	}
 
+	void
+	ProcessSerialMsg_RestartCommand(
+		char *	inComponents[])
+	{
+		int nodeID = atoi(inComponents[0]);
+
+		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+		{
+			CPU_RESTART();
+		}
+		else
+		{
+			gCANBus.SendMsg(nodeID, eMsgType_Restart, 0, 0, NULL);
+		}
+	}
+
 	bool
 	ProcessSerialMsg(
 		char*	inStr)
@@ -660,7 +706,7 @@ public:
 		char*	ep = inStr + strLen;
 		int		curCompIndex = 0;
 
-		DebugMsg(eDbgLevel_Verbose, "Serial Str: %s\n", inStr);
+		DebugMsg(eDbgLevel_Verbose, "Serial: Received %s\n", inStr);
 
 		while(cp < ep)
 		{
@@ -729,6 +775,10 @@ public:
 		else if(strcmp(components[0], "dcc_command") == 0)
 		{
 			return ProcessSerialMsg_DCCCommand(components + 1);
+		}
+		else if(strcmp(components[0], "restart") == 0)
+		{
+			ProcessSerialMsg_RestartCommand(components + 1);
 		}
 
 		Serial.printf("expecting valid command but got \"%s\"\n", components[0]);

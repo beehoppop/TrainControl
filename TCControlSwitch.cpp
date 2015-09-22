@@ -70,7 +70,7 @@ CModule_ControlSwitch::Touch(
 {
 	uint8_t	index = touchIDToControlSwitchIndexMap[inTouchID];
 
-	//DebugMsg(eDbgLevel_Verbose, "Touch cs index %d\n", index);
+	//DebugMsg(eDbgLevel_Verbose, "CS: Touch cs index %d\n", index);
 
 	ControlSwitchTouchedID(controlSwitchArray[index].id, true, true);
 }
@@ -81,7 +81,7 @@ CModule_ControlSwitch::Release(
 {
 	uint8_t	index = touchIDToControlSwitchIndexMap[inTouchID];
 
-	//DebugMsg(eDbgLevel_Verbose, "Release cs index %d\n", index);
+	//DebugMsg(eDbgLevel_Verbose, "CS: Release cs index %d\n", index);
 
 	ControlSwitchTouchedID(controlSwitchArray[index].id, false, true);
 }
@@ -106,7 +106,7 @@ CModule_ControlSwitch::ControlSwitchActivated(
 	uint8_t		inDirection,
 	bool		inBroadcast)
 {
-	//DebugMsg(eDbgLevel_Verbose, "act %d %d\n", inID, inDirection);
+	DebugMsg(eDbgLevel_Basic, "CS: act %d %s\n", inControlSwitchID, inDirection == eTurnDir_Straight ? "straight" : "turn");
 
 	if(inBroadcast)
 	{
@@ -247,7 +247,7 @@ CModule_ControlSwitch::TableUpdate(
 		{
 			if(csToTurnoutIDList->count >= eMaxTurnoutsPerSwitch)
 			{
-				DebugMsg(eDbgLevel_Basic, "Too many turnouts mapped to one switch\n");
+				DebugMsg(eDbgLevel_Basic, "CS: Too many turnouts mapped to one switch\n");
 				continue;
 			}
 			csToTurnoutIDList->turnoutIDList[csToTurnoutIDList->count++] = controlSwitchToTurnoutMapArray[i].turnout1ID;
@@ -257,12 +257,17 @@ CModule_ControlSwitch::TableUpdate(
 		{
 			if(csToTurnoutIDList->count >= eMaxTurnoutsPerSwitch)
 			{
-				DebugMsg(eDbgLevel_Basic, "Too many turnouts mapped to one switch\n");
+				DebugMsg(eDbgLevel_Basic, "CS: Too many turnouts mapped to one switch\n");
 				continue;
 			}
 			csToTurnoutIDList->turnoutIDList[csToTurnoutIDList->count++] = controlSwitchToTurnoutMapArray[i].turnout2ID;
 		}
 	}
+
+	gAction.SendSerial(
+		inSrcNode,
+		"CC:%d table_update control_switch\n", 
+		gConfig.GetVal(eConfigVar_NodeID));
 
 	return true;
 }

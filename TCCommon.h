@@ -7,6 +7,10 @@
 	#include "WProgram.h"
 #endif
 
+#define CPU_RESTART_ADDR (uint32_t *)0xE000ED0C
+#define CPU_RESTART_VAL 0x5FA0004
+#define CPU_RESTART() (*CPU_RESTART_ADDR = CPU_RESTART_VAL)
+
 enum
 {
 	eMaxControlSwitchCount = 12,
@@ -21,7 +25,7 @@ enum
 
 	eInvalidID = 0xFFFF,
 
-	eEEPROMVersion = 8,
+	eEEPROMVersion = 9,
 
 	eTurnDir_Straight = 0,
 	eTurnDir_Turnout,
@@ -37,6 +41,7 @@ enum
 	eMsgType_TurnoutControlSwitchTouch,
 	eMsgType_StateVar,
 	eMsgType_ConfigVar,
+	eMsgType_Restart,
 
 	eMsgType_DCCTrack,
 	eMsgType_DCCThrottle,
@@ -148,6 +153,7 @@ struct SMsg_Table
 
 struct SMsg_ConfigVar
 {
+	uint8_t	setVar;		// 1 is set, 0 is get
 	uint8_t	configVar;
 	uint8_t	value;
 };

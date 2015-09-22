@@ -19,6 +19,7 @@ enum
 };
 
 const float	gTouchPulsesPerSecond = 2.0;
+const uint8_t	cHighLEDChannel = 0xC0;
 
 CModule_Turnout gTurnout;
 
@@ -62,7 +63,7 @@ CModule_Turnout::ControlSwitchTouchedTurnoutID(
 	bool		inTouched,
 	bool		inBroadcast)
 {
-	//DebugMsg(eDbgLevel_Verbose, "Turnout touched %d %d\n", inTurnoutID, inTouched);
+	//DebugMsg(eDbgLevel_Verbose, "TO: touched %d %d\n", inTurnoutID, inTouched);
 
 	if(inBroadcast)
 	{
@@ -108,13 +109,13 @@ CModule_Turnout::ActivateTurnout(
 {
 	if(inDirection == eTurnDir_Straight)
 	{
-		DebugMsg(eDbgLevel_Basic, "setting %d high\n", turnoutConfigArray[inTableIndex].straightDOutPin);
+		DebugMsg(eDbgLevel_Basic, "TO: %d to straight, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].straightDOutPin);
 		gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].turnDOutPin);
 		gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].straightDOutPin, eMotorOnTimeMS);
 	}
 	else
 	{
-		DebugMsg(eDbgLevel_Basic, "setting %d high\n", turnoutConfigArray[inTableIndex].turnDOutPin);
+		DebugMsg(eDbgLevel_Basic, "TO: %d to turn, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].turnDOutPin);
 		gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].straightDOutPin);
 		gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].turnDOutPin, eMotorOnTimeMS);
 	}
@@ -124,16 +125,16 @@ CModule_Turnout::ActivateTurnout(
 
 	if(inDirection == eTurnDir_Straight)
 	{
-		turnR = 0xFF;
+		turnR = cHighLEDChannel;
 		turnG = 0;
 		straightR = 0;
-		straightG = 0xFF;
+		straightG = cHighLEDChannel;
 	}
 	else
 	{
 		turnR = 0;
-		turnG = 0xFF;
-		straightR = 0xFF;
+		turnG = cHighLEDChannel;
+		straightR = cHighLEDChannel;
 		straightG = 0;
 	}
 
@@ -252,7 +253,7 @@ CModule_Turnout::TableUpdate(
 				{
 					if(ledNumList->count >= eMaxTurnoutsPerSwitch)
 					{
-						DebugMsg(eDbgLevel_Basic, "Too many turnout leds mapped to one turnout\n");
+						DebugMsg(eDbgLevel_Basic, "TO: Too many turnout leds mapped to one turnout\n");
 						break;
 					}
 					ledNumList->straightNumList[ledNumList->count] = turnoutLEDMapConfigArray[i].straightLEDNum[j];
@@ -262,6 +263,11 @@ CModule_Turnout::TableUpdate(
 			}
 		}
 	}
+
+	gAction.SendSerial(
+		inSrcNode,
+		"CC:%d table_update turnout\n", 
+		gConfig.GetVal(eConfigVar_NodeID));
 
 	return true;
 }

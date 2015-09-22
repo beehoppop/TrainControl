@@ -135,9 +135,9 @@ CModule_MPR121::Setup(
 	pinMode(eIRQPin, INPUT);
 	digitalWrite(eIRQPin, HIGH); //enable pullup resistor
 
-	DebugMsg(eDbgLevel_Verbose, "Staring wire");
+	//DebugMsg(eDbgLevel_Verbose, "MPR121: Staring wire");
 	Wire.begin();
-	DebugMsg(eDbgLevel_Verbose, "done wire");
+	//DebugMsg(eDbgLevel_Verbose, "MPR121: done wire");
 
 	// Enter config mode
 	if(MPR121SetRegister(ELE_CFG, 0x00) != 0)
