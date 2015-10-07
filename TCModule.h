@@ -29,8 +29,16 @@ public:
 		void);
 
 	virtual void
+	TearDown(
+		void);
+
+	virtual void
 	Update(
 		uint32_t	inDeltaTimeUS);
+	
+	virtual void
+	ResetState(
+		void);
 	
 	virtual void
 	EEPROMInitialize(
@@ -41,13 +49,21 @@ public:
 		void);
 
 	static void
+	TearDownAll(
+		void);
+
+	static void
+	ResetAllState(
+		void);
+
+	static void
 	LoopAll(
 		void);
 
 	uint32_t		uid;
 
 protected:
-
+	
 	uint16_t		eepromSize;
 	uint16_t		eepromOffset;
 	uint32_t		updateTimeUS;

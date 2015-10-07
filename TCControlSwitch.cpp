@@ -12,13 +12,15 @@
 #include "TCMPR121.h"
 #include "TCLED.h"
 #include "TCAssert.h"
+#include "TCTeensyTouch.h"
 
 #define TOU_THRESH	0x06
 #define	REL_THRESH	0x0A
 
 enum
 {
-	eUpdateTimeUS = 50000
+	eUpdateTimeUS = 50000,
+	eDownDownDelayMS = 1000
 };
 
 CModule_ControlSwitch	gControlSwitch;
@@ -35,13 +37,46 @@ void
 CModule_ControlSwitch::Setup(
 	void)
 {
-	RegisterTouchSensor(0, this);
+	usingBuiltInTouch = gConfig.GetVal(eConfigVar_BuiltInTouch) != 0;
 
 	LoadDataFromEEPROM(controlSwitchArray, eepromOffset, sizeof(controlSwitchArray));
 	LoadDataFromEEPROM(controlSwitchToTurnoutMapArray, eepromOffset + sizeof(controlSwitchArray), sizeof(controlSwitchToTurnoutMapArray));
 
 	SMsg_Table	dummy;
 	TableUpdate(0, dummy);
+
+	if(usingBuiltInTouch)
+	{
+		uint32_t	touchBV = 0;
+
+		for(int i = 0; i < eMaxControlSwitchCount; ++i)
+		{
+			if(controlSwitchArray[i].touchID != 0xFF)
+			{
+				touchBV |= 1 << controlSwitchArray[i].touchID;
+			}
+		}
+
+		TeensyRegisterTouchSensor(touchBV, this);
+	}
+	else
+	{
+		MPRRegisterTouchSensor(0, this);
+	}
+}
+
+void
+CModule_ControlSwitch::TearDown(
+	void)
+{
+	if(usingBuiltInTouch)
+	{
+		TeensyUnRegisterTouchSensor(this);
+	}
+	else
+	{
+		MPRUnRegisterTouchSensor(0, this);
+	}
 }
 
 void
@@ -56,12 +91,25 @@ CModule_ControlSwitch::Update(
 		if(gDigitalIO.CheckInputActivated(controlSwitchArray[i].straightDInPin))
 		{
 			ControlSwitchActivated(controlSwitchArray[i].id, eTurnDir_Straight, true);
+			state[i].touchDown = false;
 		}
 		else if(gDigitalIO.CheckInputActivated(controlSwitchArray[i].turnDInPin))
 		{
 			ControlSwitchActivated(controlSwitchArray[i].id, eTurnDir_Turnout, true);
+			state[i].touchDown = false;
 		}
-	}	
+
+		if(!state[i].touchActivated && state[i].touchDown && gCurTimeMS - state[i].touchDownTimeMS > eDownDownDelayMS)
+		{
+			state[i].touchActivated = true;
+			ControlSwitchTouchedID(controlSwitchArray[i].id, true, true);
+		}
+		else if(state[i].touchActivated && !state[i].touchDown)
+		{
+			state[i].touchActivated = false;
+			ControlSwitchTouchedID(controlSwitchArray[i].id, false, true);
+		}
+	}
 }
 
 void
@@ -70,9 +118,13 @@ CModule_ControlSwitch::Touch(
 {
 	uint8_t	index = touchIDToControlSwitchIndexMap[inTouchID];
 
-	//DebugMsg(eDbgLevel_Verbose, "CS: Touch cs index %d\n", index);
+	DebugMsg(eDbgLevel_Verbose, "CS: Touch cs id %d index %d\n", inTouchID, index);
 
-	ControlSwitchTouchedID(controlSwitchArray[index].id, true, true);
+	if(index < eMaxControlSwitchCount)
+	{
+		state[index].touchDown = true;
+		state[index].touchDownTimeMS = gCurTimeMS;
+	}
 }
 
 void
@@ -81,9 +133,13 @@ CModule_ControlSwitch::Release(
 {
 	uint8_t	index = touchIDToControlSwitchIndexMap[inTouchID];
 
-	//DebugMsg(eDbgLevel_Verbose, "CS: Release cs index %d\n", index);
+	DebugMsg(eDbgLevel_Verbose, "CS: Release cs id %d index %d\n", inTouchID, index);
 
-	ControlSwitchTouchedID(controlSwitchArray[index].id, false, true);
+	if(index < eMaxControlSwitchCount)
+	{
+		state[index].touchDown = false;
+		state[index].touchDownTimeMS = 0;
+	}
 }
 	
 void
@@ -92,6 +148,11 @@ CModule_ControlSwitch::ControlSwitchTouchedID(
 	bool		inTouched,
 	bool		inBroadcast)
 {
+	if(inControlSwitchID >= eMaxControlSwitchID)
+	{
+		return;
+	}
+
 	SControlSwitchToTurnoutIDList*	turnoutIDList = controlSwitchIDToTurnoutIDMap + inControlSwitchID;
 
 	for(int i = 0; i < turnoutIDList->count; ++i)
@@ -107,6 +168,11 @@ CModule_ControlSwitch::ControlSwitchActivated(
 	bool		inBroadcast)
 {
 	DebugMsg(eDbgLevel_Basic, "CS: act %d %s\n", inControlSwitchID, inDirection == eTurnDir_Straight ? "straight" : "turn");
+
+	if(inControlSwitchID >= eMaxControlSwitchID)
+	{
+		return;
+	}
 
 	if(inBroadcast)
 	{
@@ -225,7 +291,7 @@ CModule_ControlSwitch::TableUpdate(
 			continue;
 		}
 
-		if(controlSwitchArray[i].touchID < eMaxControlSwitchCount)
+		if(controlSwitchArray[i].touchID < eDIOPinCount)
 		{
 			touchIDToControlSwitchIndexMap[controlSwitchArray[i].touchID] = i;
 		}

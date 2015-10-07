@@ -69,6 +69,7 @@ CModule_DigitalIO::CheckInputActivated(
 
 			if(gCurTimeMS - inputPinLastChange[inPin] >= eSettleTimeMS)
 			{
+				DebugMsg(eDbgLevel_Verbose, "dio pin %d activated\n", inPin);
 				inputPinLastState[inPin] = eState_WaitingForDeactive;
 				return true;
 			}

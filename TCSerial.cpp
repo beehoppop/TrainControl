@@ -38,9 +38,9 @@
 		led id [led num] on|off
 		dcc_command [command id] power [on|off]
 		dcc_command [command id] allstop
-		dcc_command [command id] dir [address] [forward|reverse]
+		dcc_command [command id] dir [address] [for|rev]
 		dcc_command [command id] speed [address] [speed]
-		dcc_command [command id] stop [address]
+		dcc_command [command id] estop [address]
 
 		dcc_command [command id] mode [ops|service]
 
@@ -182,6 +182,14 @@ public:
 		else if(strcmp(inComponents[2], "led_count") == 0)
 		{
 			msg.configVar = eConfigVar_LEDCount;
+		}
+		else if(strcmp(inComponents[2], "led_spipin") == 0)
+		{
+			msg.configVar = eConfigVar_LEDSPIPin;
+		}
+		else if(strcmp(inComponents[2], "built_in_touch") == 0)
+		{
+			msg.configVar = eConfigVar_BuiltInTouch;
 		}
 		else
 		{
@@ -457,8 +465,8 @@ public:
 		}
 		else if(strcmp(inComponents[0], "dcc_command") == 0)
 		{
-			// dcc_command [node id] [table index] [command id]
-			if(!IsStrDigit(inComponents[3]))
+			// dcc_command [node id] [table index] [command id] [waveform pin] [power pin] [current sense pin]
+			if(!IsStrDigit(inComponents[3]) || !IsStrDigit(inComponents[4]) || !IsStrDigit(inComponents[5]) || !IsStrDigit(inComponents[6]))
 			{
 				return false;
 			}
@@ -504,7 +512,7 @@ public:
 
 		SMsg_Table	tableMsg;
 
-		tableMsg.index = atoi(inComponents[1]);
+		tableMsg.index = atoi(inComponents[2]);
 
 		if(strcmp(inComponents[0], "control_switch") == 0)
 		{
@@ -622,10 +630,6 @@ public:
 				return true;
 			}
 		}
-		else if(strcmp(inComponents[1], "allstop") == 0)
-		{
-		
-		}
 		else if(strcmp(inComponents[1], "dir") == 0)
 		{
 			address = atoi(inComponents[2]);
@@ -655,9 +659,17 @@ public:
 				gDCC.StandardSpeed(commandID, (uint8_t)address, (uint8_t)value);
 			}
 		}
-		else if(strcmp(inComponents[1], "stop") == 0)
+		else if(strcmp(inComponents[1], "estop") == 0)
 		{
-		
+			address = atoi(inComponents[2]);
+			if(address < 256)
+			{
+				gDCC.EmergencyStop(commandID, (uint8_t)address);
+			}
+		}
+		else if(strcmp(inComponents[1], "allstop") == 0)
+		{
+			gDCC.EmergencyAllStop(commandID);
 		}
 		else if(strcmp(inComponents[1], "mode") == 0)
 		{
@@ -680,20 +692,43 @@ public:
 		return false;
 	}
 
-	void
-	ProcessSerialMsg_RestartCommand(
+	bool
+	ProcessSerialMsg_SoftRestartCommand(
 		char *	inComponents[])
 	{
 		int nodeID = atoi(inComponents[0]);
 
 		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
 		{
-			CPU_RESTART();
+			CModule::TearDownAll();
+			CModule::SetupAll();
+			Serial.printf("CC:soft_restart complete\n");
 		}
 		else
 		{
-			gCANBus.SendMsg(nodeID, eMsgType_Restart, 0, 0, NULL);
+			gCANBus.SendMsg(nodeID, eMsgType_SoftRestart, 0, 0, NULL);
 		}
+
+		return true;
+	}
+
+	bool
+	ProcessSerialMsg_ResetAllStateCommand(
+		char *	inComponents[])
+	{
+		int nodeID = atoi(inComponents[0]);
+
+		if(nodeID == gConfig.GetVal(eConfigVar_NodeID))
+		{
+			CModule::ResetAllState();
+			Serial.printf("CC:reset_all_state complete\n");
+		}
+		else
+		{
+			gCANBus.SendMsg(nodeID, eMsgType_ResetAllState, 0, 0, NULL);
+		}
+
+		return true;
 	}
 
 	bool
@@ -776,9 +811,13 @@ public:
 		{
 			return ProcessSerialMsg_DCCCommand(components + 1);
 		}
-		else if(strcmp(components[0], "restart") == 0)
+		else if(strcmp(components[0], "soft_restart") == 0)
 		{
-			ProcessSerialMsg_RestartCommand(components + 1);
+			return ProcessSerialMsg_SoftRestartCommand(components + 1);
+		}
+		else if(strcmp(components[0], "reset_all_state") == 0)
+		{
+			return ProcessSerialMsg_ResetAllStateCommand(components + 1);
 		}
 
 		Serial.printf("expecting valid command but got \"%s\"\n", components[0]);

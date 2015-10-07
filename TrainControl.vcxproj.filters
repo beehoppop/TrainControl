@@ -66,6 +66,9 @@
     <ClInclude Include="TCMPR121.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TCTeensyTouch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TCAssert.cpp">
@@ -108,6 +111,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TCMPR121.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TCTeensyTouch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

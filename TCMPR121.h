@@ -1,33 +1,26 @@
 #ifndef _TCMPR121_h
 #define _TCMPR121_h
 
-class ITouchSensor
-{
-public:
-
-	virtual void
-	Touch(
-		int	inTouchID) = 0;
-
-	virtual void
-	Release(
-		int	inTouchID) = 0;
-
-};
+#include "TCCommon.h"
 
 void
-RegisterTouchSensor(
+MPRRegisterTouchSensor(
 	int				inPort,
 	ITouchSensor*	inTouchSensor);
 
 void
-SetTouchSensitivity(
+MPRUnRegisterTouchSensor(
+	int				inPort,
+	ITouchSensor*	inTouchSensor);
+
+void
+MPRSetTouchSensitivity(
 	int		inPort,
 	int		inID,
 	uint8_t	inSensitivity);	// 0 is lowest sensitivity, 0xFF is highest
 
 void
-SetReleaseSensitivity(
+MPRSetReleaseSensitivity(
 	int		inPort,
 	int		inID,
 	uint8_t	inSensitivity);	// 0 is lowest sensitivity, 0xFF is highest

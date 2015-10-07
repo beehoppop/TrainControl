@@ -41,7 +41,8 @@ enum
 	eMsgType_TurnoutControlSwitchTouch,
 	eMsgType_StateVar,
 	eMsgType_ConfigVar,
-	eMsgType_Restart,
+	eMsgType_SoftRestart,
+	eMsgType_ResetAllState,
 
 	eMsgType_DCCTrack,
 	eMsgType_DCCThrottle,
@@ -175,6 +176,20 @@ struct SMsg_DCCServiceCommand
 {
 	uint8_t	type;
 	uint8_t	data;
+};
+
+class ITouchSensor
+{
+public:
+
+	virtual void
+	Touch(
+		int	inTouchID) = 0;
+
+	virtual void
+	Release(
+		int	inTouchID) = 0;
+
 };
 
 extern char const*	gVersionStr;

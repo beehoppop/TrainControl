@@ -24,6 +24,10 @@ public:
 		void);
 
 	virtual void
+	TearDown(
+		void);
+
+	virtual void
 	Update(
 		uint32_t	inDeltaTimeUS);
 
@@ -43,6 +47,10 @@ public:
 
 
 private:
+
+	void
+	ProcessCANMsg(
+		CAN_message_t const&	inMsg);
 
 	void
 	DumpMsg(

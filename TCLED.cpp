@@ -16,6 +16,7 @@ enum
 {
 	eMaxLEDs = 128,
 	eLEDDataPin = 23,
+	eLEDDataSPIPin = 11,
 
 	eUpdateTimeUS = 20000
 };
@@ -56,7 +57,14 @@ CLEDClass::Setup(
 		gNumLEDs = eMaxLEDs;
 	}
 
-	FastLED.addLeds<WS2812, eLEDDataPin>(gFastLEDData, gNumLEDs);
+	if(gConfig.GetVal(eConfigVar_LEDSPIPin))
+	{
+		FastLED.addLeds<WS2812, eLEDDataSPIPin>(gFastLEDData, gNumLEDs);
+	}
+	else
+	{
+		FastLED.addLeds<WS2812, eLEDDataPin>(gFastLEDData, gNumLEDs);
+	}
 }
 
 void
@@ -137,6 +145,11 @@ CLEDClass::SetColor(
 {
 	DebugMsg(eDbgLevel_Basic, "LED: Setting %d to color %x %x %x trans %f\n", inLEDIndex, inRed, inGreen, inBlue, inTransitionTimeMS);
 
+	if(inLEDIndex >= gNumLEDs)
+	{
+		return;
+	}
+
 	if(inTransitionTimeMS > 0)
 	{
 		gLEDState[inLEDIndex].targetR = inRed;
@@ -162,6 +175,11 @@ CLEDClass::PulseOnOff(
 	bool		inPulseOn)
 {
 	DebugMsg(eDbgLevel_Basic, "LED: Setting  %d to pulse %d %f\n", inLEDIndex, inPulseOn, inPulsesPerSecond);
+
+	if(inLEDIndex >= gNumLEDs)
+	{
+		return;
+	}
 
 	if(inPulseOn)
 	{

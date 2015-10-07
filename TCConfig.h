@@ -16,6 +16,8 @@ enum
 	eConfigVar_NodeID,
 	eConfigVar_DebugLevel,
 	eConfigVar_LEDCount,
+	eConfigVar_LEDSPIPin,
+	eConfigVar_BuiltInTouch,
 
 	eConfigVar_Max = 16
 };
@@ -29,6 +31,10 @@ public:
 
 	virtual void
 	Setup(
+		void);
+	
+	virtual void
+	ResetState(
 		void);
 	
 	uint8_t

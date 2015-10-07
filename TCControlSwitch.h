@@ -23,6 +23,10 @@ public:
 	void
 	Setup(
 		void);
+
+	void
+	TearDown(
+		void);
 	
 	void
 	Update(
@@ -71,10 +75,19 @@ private:
 		uint16_t	turnoutIDList[eMaxTurnoutsPerSwitch];
 	};
 
+	struct SCSState
+	{
+		bool		touchDown;
+		bool		touchActivated;
+		uint32_t	touchDownTimeMS;
+	};
+
+	bool								usingBuiltInTouch;
 	SControlSwitchConfig				controlSwitchArray[eMaxControlSwitchCount];
 	SControlSwitchToTurnoutMapConfig	controlSwitchToTurnoutMapArray[eMaxControlSwitchToTurnoutMapCount];
-	uint8_t								touchIDToControlSwitchIndexMap[eMaxControlSwitchCount];
+	uint8_t								touchIDToControlSwitchIndexMap[eDIOPinCount];
 	SControlSwitchToTurnoutIDList		controlSwitchIDToTurnoutIDMap[eMaxControlSwitchID];
+	SCSState							state[eMaxControlSwitchCount];
 };
 
 extern CModule_ControlSwitch	gControlSwitch;

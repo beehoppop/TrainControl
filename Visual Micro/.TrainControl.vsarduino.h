@@ -109,6 +109,8 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <TCSerial.h>
 #include <TCState.cpp>
 #include <TCState.h>
+#include <TCTeensyTouch.cpp>
+#include <TCTeensyTouch.h>
 #include <TCTurnout.cpp>
 #include <TCTurnout.h>
 #include <TCUtilities.cpp>

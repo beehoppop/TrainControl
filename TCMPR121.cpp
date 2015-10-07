@@ -54,8 +54,8 @@
 #define	ATO_CFGL	0x7E
 #define	ATO_CFGT	0x7F
 
-#define TOU_THRESH	0x06
-#define	REL_THRESH	0x0A
+#define TOU_THRESH	0x26
+#define	REL_THRESH	0x2A
 
 enum
 {
@@ -86,6 +86,12 @@ public:
 	void
 	Update(
 		uint32_t	inDeltaTimeUS);
+
+	void
+	Initialize(
+		void);
+
+	bool	initialized;
 };
 
 static int				gSensorInterfaceCount;
@@ -130,7 +136,19 @@ void
 CModule_MPR121::Setup(
 	void)
 {
-	//return;
+
+}
+
+void
+CModule_MPR121::Initialize(
+	void)
+{
+	if(initialized)
+	{
+		return;
+	}
+
+	initialized = true;
 
 	pinMode(eIRQPin, INPUT);
 	digitalWrite(eIRQPin, HIGH); //enable pullup resistor
@@ -228,7 +246,7 @@ CModule_MPR121::Update(
 				if(gCurTimeMS - gLastTouchTime[itr] >= eSettleTimeMS)
 				{
 					gTouchState[itr] = eState_WaitingForChangeToRelease;
-					//DebugMsg(eDbgLevel_Verbose, "MPR121: Touched %d\n", itr);
+					DebugMsg(eDbgLevel_Verbose, "MPR121: Touched %d\n", itr);
 					for(int itr2 = 0; itr2 < gSensorInterfaceCount; ++itr2)
 					{
 						gSensorInterfaceList[itr2].touchSensor->Touch(itr);
@@ -256,7 +274,7 @@ CModule_MPR121::Update(
 				if(gCurTimeMS - gLastTouchTime[itr] >= eSettleTimeMS)
 				{
 					gTouchState[itr] = eState_WaitingForChangeToTouched;
-					//DebugMsg(eDbgLevel_Verbose, "MPR121: Release %d\n", itr);
+					DebugMsg(eDbgLevel_Verbose, "MPR121: Release %d\n", itr);
 					for(int itr2 = 0; itr2 < gSensorInterfaceCount; ++itr2)
 					{
 						gSensorInterfaceList[itr2].touchSensor->Release(itr);
@@ -268,11 +286,23 @@ CModule_MPR121::Update(
 }
 
 void
-RegisterTouchSensor(
+MPRRegisterTouchSensor(
 	int				inPort,
 	ITouchSensor*	inTouchSensor)
 {
 	MAssert(gSensorInterfaceCount < eMaxInterfaces);
+
+	gModuleMPR121.Initialize();
+
+	for(int i = 0; i < gSensorInterfaceCount; ++i)
+	{
+		if(gSensorInterfaceList[i].touchSensor == inTouchSensor)
+		{
+			// Don't re register
+			gSensorInterfaceList[i].port = inPort;
+			return;
+		}
+	}
 
 	SSensorInterface*	newInterface = gSensorInterfaceList + gSensorInterfaceCount++;
 	newInterface->port = inPort;
@@ -280,7 +310,23 @@ RegisterTouchSensor(
 }
 
 void
-SetTouchSensitivity(
+MPRUnRegisterTouchSensor(
+	int				inPort,
+	ITouchSensor*	inTouchSensor)
+{
+	for(int i = 0; i < gSensorInterfaceCount; ++i)
+	{
+		if(gSensorInterfaceList[i].touchSensor == inTouchSensor)
+		{
+			memmove(gSensorInterfaceList + i, gSensorInterfaceList + i + 1, (gSensorInterfaceCount - i - 1) * sizeof(SSensorInterface));
+			--gSensorInterfaceCount;
+			return;
+		}
+	}
+}
+
+void
+MPRSetTouchSensitivity(
 	int		inPort,
 	int		inID,
 	uint8_t	inSensitivity)
@@ -295,7 +341,7 @@ SetTouchSensitivity(
 }
 
 void
-SetReleaseSensitivity(
+MPRSetReleaseSensitivity(
 	int		inPort,
 	int		inID,
 	uint8_t	inSensitivity)

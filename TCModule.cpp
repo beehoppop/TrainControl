@@ -30,6 +30,7 @@ static int			gModuleCount;
 static CModule*		gModuleList[eMaxModuleCount];
 static SEEPROMEntry	gEEPROMEntryList[eMaxModuleCount];
 static bool			gTooManyModules = false;
+static bool			gTearingDown = false;
 
 uint32_t	gCurTimeMS;
 uint32_t	gCurTimeUS;
@@ -60,10 +61,24 @@ CModule::Setup(
 }
 
 void
+CModule::TearDown(
+	void)
+{
+
+}
+
+void
 CModule::Update(
 	uint32_t	inDeltaTimeUS)
 {
 
+}
+	
+void
+CModule::ResetState(
+	void)
+{
+	EEPROMInitialize();
 }
 
 void
@@ -257,7 +272,49 @@ CModule::SetupAll(
 	}
 
 	#if MDebugModules
-	DebugMsg(eDbgLevel_Medium, "Module: Complete\n");
+	DebugMsg(eDbgLevel_Medium, "Module: Setup Complete\n");
+	#endif
+}
+
+void
+CModule::TearDownAll(
+	void)
+{
+	for(int i = 0; i < gModuleCount; ++i)
+	{
+		DebugMsg(eDbgLevel_Medium, "Module: TearDown %s\n", StringizeUInt32(gModuleList[i]->uid));
+		#if MDebugModules
+		delay(3000);
+		#endif
+		gModuleList[i]->TearDown();
+	}
+
+	gTearingDown = true;
+
+	#if MDebugModules
+	DebugMsg(eDbgLevel_Medium, "Module: TearDown Complete\n");
+	#endif
+}
+
+void
+CModule::ResetAllState(
+	void)
+{
+	for(int i = 0; i < gModuleCount; ++i)
+	{
+		DebugMsg(eDbgLevel_Medium, "Module: ResetState %s\n", StringizeUInt32(gModuleList[i]->uid));
+		#if MDebugModules
+		delay(3000);
+		#endif
+		gModuleList[i]->TearDown();
+		gModuleList[i]->ResetState();
+		gModuleList[i]->Setup();
+	}
+
+		gTearingDown = true;
+
+	#if MDebugModules
+	DebugMsg(eDbgLevel_Medium, "Module: ResetAllState Complete\n");
 	#endif
 }
 
@@ -267,6 +324,11 @@ CModule::LoopAll(
 {
 	for(int i = 0; i < gModuleCount; ++i)
 	{
+		if(gTearingDown)
+		{
+			break;
+		}
+
 		gCurTimeMS = millis();
 		gCurTimeUS = micros();
 
@@ -277,4 +339,6 @@ CModule::LoopAll(
 			gModuleList[i]->lastUpdateUS = gCurTimeUS;
 		}
 	}
+
+	gTearingDown = false;
 }

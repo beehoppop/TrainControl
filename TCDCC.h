@@ -25,6 +25,10 @@ public:
 		void);
 
 	virtual void
+	TearDown(
+		void);
+
+	virtual void
 	Update(
 		uint32_t	inDeltaTimeUS);
 
@@ -83,10 +87,10 @@ private:
 	enum
 	{
 		eMaxPacketSize = 6,
-		eMaxPacketCount = 64,
 		eTransmitCount = 10,
 		eMaxCommandStations = 2,
 		eMaxDecoders = 64,
+		eMaxCommandStationID = 64,
 	};
 	
 	struct SDecoder
@@ -94,22 +98,19 @@ private:
 		uint16_t	address;
 		uint8_t		direction;
 		uint8_t		speed;
-	};
 
-	struct SPacket
-	{
-		uint8_t	transmitCount;
-		uint8_t	size;
-		uint8_t	data[eMaxPacketSize];
+		uint8_t				transmitCount;	// The number of remaining times to transmit the current packet
+		uint8_t volatile	bufferIndex;	// The buffer index currently being used to put data on the track
+		uint8_t				size[2];		// The size of the packet
+		uint8_t				data[2][eMaxPacketSize];	// The data buffers for the packet
 	};
 
 	struct SCommandState
 	{
-		bool	opsMode;
-		bool	power;
-		bool	reverse;
+		bool	opsMode;	// true if in normal operations mode, false if in programming mode
+		bool	power;		// true if power to the track is on
 
-		uint8_t		curPacketIndex;
+		uint8_t		curDecoderTranxIndex;
 		uint8_t		curByteIndex;
 		uint8_t		curBitIndex;
 		uint8_t		curPreambleBitCount;
@@ -117,18 +118,14 @@ private:
 		uint8_t		curPhase;
 		uint8_t		curState;
 		uint8_t		curBit;
-		uint8_t		nextPacketIndex;
-		SPacket		transmitBuffer[eMaxPacketCount];
+		uint8_t		curBufferIndex;
 		SDecoder	decoderArray[eMaxDecoders];
+
+		SDecoder*	curDecoderTranx;
 
 		void
 		Reset(
 			void);
-
-		bool
-		AddPacket(
-			uint8_t			inSize,
-			uint8_t const*	inData);
 
 		bool
 		DoServiceModePacket(

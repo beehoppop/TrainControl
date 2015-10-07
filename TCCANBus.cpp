@@ -62,7 +62,7 @@ CModule_CANBus::SendMsg(
 {
 	CAN_message_t	msg;
 
-	//DebugMsg(eDbgLevel_Basic, "CAN: %02x TXM src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gNodeID, gNodeID, inDstNode, inMsgType, inMsgFlags);
+	//DebugMsg(eDbgLevel_Basic, "CAN: %02x TXM src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gConfig.GetVal(eConfigVar_NodeID), gConfig.GetVal(eConfigVar_NodeID), inDstNode, inMsgType, inMsgFlags);
 
 	MAssert(inMsgSize <= eMaxDataSize);
 
@@ -72,6 +72,8 @@ CModule_CANBus::SendMsg(
 	msg.len = inMsgSize;
 	if(inMsgData != NULL && inMsgSize > 0)
 		memcpy(msg.buf, inMsgData, inMsgSize);
+	
+	DumpMsg(msg);
 
 	canBus.write(msg);
 }
@@ -118,11 +120,18 @@ void
 CModule_CANBus::Setup(
 	void)
 {
-
+	canBus.begin();
+}
+	
+void
+CModule_CANBus::TearDown(
+	void)
+{
+	canBus.end();
 }
 
 void
-ProcessCANMsg(
+CModule_CANBus::ProcessCANMsg(
 	CAN_message_t const&	inMsg)
 {
 	uint8_t	srcNode;
@@ -132,7 +141,8 @@ ProcessCANMsg(
 
 	CANIDToComponents(inMsg.id, srcNode, dstNode, msgType, flags);
 
-	//Serial.printf("%02x RCV src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gNodeID, srcNode, dstNode, msgType, flags);
+	Serial.printf("CAN: %02x RCV src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gConfig.GetVal(eConfigVar_NodeID), srcNode, dstNode, msgType, flags);
+	DumpMsg(inMsg);
 
 	if(dstNode != 0xFF && dstNode != gConfig.GetVal(eConfigVar_NodeID))
 		return;
@@ -141,22 +151,22 @@ ProcessCANMsg(
 	{
 		case eMsgType_ControlSwitch:
 		{
-			SMsg_ControlSwitch&	msg = (SMsg_ControlSwitch&)inMsg;
-			gControlSwitch.ControlSwitchActivated(msg.id, msg.direction);
+			SMsg_ControlSwitch*	msg = (SMsg_ControlSwitch*)inMsg.buf;
+			gControlSwitch.ControlSwitchActivated(msg->id, msg->direction, false);
 			break;
 		}
 
 		case eMsgType_TrackTurnout:
 		{
-			SMsg_TrackTurnout&	msg = (SMsg_TrackTurnout&)inMsg;
-			gTurnout.SetTurnoutDirection(msg.id, msg.direction);
+			SMsg_TrackTurnout*	msg = (SMsg_TrackTurnout*)inMsg.buf;
+			gTurnout.SetTurnoutDirection(msg->id, msg->direction);
 			break;
 		}
 
 		case eMsgType_TurnoutControlSwitchTouch:
 		{
-			SMsg_TurnoutControlSwitchTouch& msg = (SMsg_TurnoutControlSwitchTouch&)inMsg;
-			gTurnout.ControlSwitchTouchedTurnoutID(msg.turnoutID, msg.touched, false);
+			SMsg_TurnoutControlSwitchTouch* msg = (SMsg_TurnoutControlSwitchTouch*)inMsg.buf;
+			gTurnout.ControlSwitchTouchedTurnoutID(msg->turnoutID, msg->touched, false);
 			break;
 		}
 
@@ -185,26 +195,26 @@ ProcessCANMsg(
 
 		case eMsgType_ConfigVar:
 		{
-			SMsg_ConfigVar&	msg = (SMsg_ConfigVar&)inMsg;
+			SMsg_ConfigVar*	msg = (SMsg_ConfigVar*)inMsg.buf;
 
-			if(msg.setVar)
+			if(msg->setVar)
 			{
-				gConfig.SetVal(msg.configVar, msg.value);
+				gConfig.SetVal(msg->configVar, msg->value);
 				gAction.SendSerial(
-					gConfig.GetVal(eConfigVar_NodeID),
+					srcNode,
 					"CC:%d config_var set %d %d\n", 
 					gConfig.GetVal(eConfigVar_NodeID),
-					msg.configVar,
-					msg.value);
+					msg->configVar,
+					msg->value);
 			}
 			else
 			{
-				uint8_t	val = gConfig.GetVal(msg.configVar);
+				uint8_t	val = gConfig.GetVal(msg->configVar);
 				gAction.SendSerial(
-					gConfig.GetVal(eConfigVar_NodeID),
+					srcNode,
 					"CC:%d config_var get %d %d\n", 
 					gConfig.GetVal(eConfigVar_NodeID),
-					msg.configVar,
+					msg->configVar,
 					val);
 			}
 			break;
@@ -212,13 +222,24 @@ ProcessCANMsg(
 
 		case eMsgType_StateVar:
 		{
-			SMsg_StateVar&	msg = (SMsg_StateVar&)inMsg;
-			gState.SetVal(msg.stateVar, msg.value);
+			SMsg_StateVar*	msg = (SMsg_StateVar*)inMsg.buf;
+			gState.SetVal(msg->stateVar, msg->value);
 			break;
 		}
 
-		case eMsgType_Restart:
-			CPU_RESTART();
+		case eMsgType_SoftRestart:
+			CModule::TearDownAll();
+			CModule::SetupAll();
+			gAction.SendSerial(
+				srcNode,
+				"CC:soft_restart complete\n");
+			break;
+
+		case eMsgType_ResetAllState:
+			CModule::ResetAllState();
+			gAction.SendSerial(
+				srcNode,
+				"CC:reset_all_state complete\n");
 			break;
 	}
 }

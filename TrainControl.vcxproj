@@ -86,6 +86,7 @@
     <ClInclude Include="TCModule.h" />
     <ClInclude Include="TCSerial.h" />
     <ClInclude Include="TCState.h" />
+    <ClInclude Include="TCTeensyTouch.h" />
     <ClInclude Include="TCTurnout.h" />
     <ClInclude Include="TCUtilities.h" />
     <ClInclude Include="Visual Micro\.TrainControl.vsarduino.h" />
@@ -105,13 +106,14 @@
     <ClCompile Include="TCState.cpp" />
     <ClCompile Include="TCTurnout.cpp" />
     <ClCompile Include="TCUtilities.cpp" />
+    <ClCompile Include="TCTeensyTouch.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM8" />
+      <UserProperties arduino.upload.port="COM11" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

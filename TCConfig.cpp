@@ -25,6 +25,12 @@ CModule_Config::Setup(
 	configVar[eConfigVar_DebugLevel] = eDbgLevel_Basic;
 }
 
+void
+CModule_Config::ResetState(
+	void)
+{
+}
+
 uint8_t
 CModule_Config::GetVal(
 	uint8_t	inVar)

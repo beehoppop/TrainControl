@@ -37,8 +37,6 @@ void
 CModule_DCC::Setup(
 	void)
 {
-return;
-
 	SMsg_Table	dummy;
 	TableUpdate(0, dummy);
 
@@ -46,6 +44,13 @@ return;
 	{
 		commandStateList[i].Reset();
 	}
+}
+
+void
+CModule_DCC::TearDown(
+	void)
+{
+	SetPowerState(0xFF, false);
 }
 
 void
@@ -60,6 +65,36 @@ CModule_DCC::SetPowerState(
 	uint8_t	inCommandID,	// 0xFF means all command stations
 	bool	inPowerOn)
 {
+	if(inCommandID == 0xFF)
+	{
+		for(int i = 0; i < eMaxCommandStations; ++i)
+		{
+			if(inPowerOn)
+			{
+				masterTimer.begin(UpdateWaveform, eDCC_WaveformPeriod);
+			}
+			else
+			{
+				masterTimer.end();
+			}
+			commandStateList[i].Reset();
+
+			if(commandConfigList[i].commandID < eMaxCommandStationID)
+			{
+				if(inPowerOn)
+				{
+					digitalWriteFast(commandConfigList[i].powerPin, 0);
+				}
+				else
+				{
+					digitalWriteFast(commandConfigList[i].powerPin, 1);
+				}
+			}
+		}
+
+		return;
+	}
+
 	uint8_t	index = FindIndexFromID(inCommandID);
 
 	if(index >= eMaxCommandStations)
@@ -67,16 +102,17 @@ CModule_DCC::SetPowerState(
 		return;
 	}
 
+	commandStateList[index].Reset();
+
 	if(inPowerOn)
 	{
-		commandStateList[inCommandID].Reset();
-		digitalWriteFast(commandConfigList[inCommandID].powerPin, 0);
+		digitalWriteFast(commandConfigList[index].powerPin, 0);
 		masterTimer.begin(UpdateWaveform, eDCC_WaveformPeriod);
 	}
 	else
 	{
 		masterTimer.end();
-		digitalWriteFast(commandConfigList[inCommandID].powerPin, 1);
+		digitalWriteFast(commandConfigList[index].powerPin, 1);
 	}
 }
 
@@ -84,14 +120,54 @@ void
 CModule_DCC::EmergencyAllStop(
 	uint16_t	inCommandID)
 {
+	uint8_t	index = FindIndexFromID(inCommandID);
 
+	if(index >= eMaxCommandStations)
+	{
+		return;
+	}
+
+	SCommandState*	cs = commandStateList + index;
+
+	noInterrupts();
+	// Clear out decoder state
+	cs->Reset();
+
+	SDecoder*		decoder = cs->FindDecoder(0);
+
+	int	bi = decoder->bufferIndex ? 0 : 1;
+	decoder->data[bi][0] = 0;
+	decoder->data[bi][1] = 0x41;
+	decoder->data[bi][2] = 0 ^ 0x41;
+	decoder->size[bi] = 3;
+	interrupts();
 }
 
 void
 CModule_DCC::ResetAllDecoders(
 	uint16_t	inCommandID)
 {
+	uint8_t	index = FindIndexFromID(inCommandID);
 
+	if(index >= eMaxCommandStations)
+	{
+		return;
+	}
+
+	SCommandState*	cs = commandStateList + index;
+
+	noInterrupts();
+	// Clear out decoder state
+	cs->Reset();
+
+	SDecoder*		decoder = cs->FindDecoder(0);
+
+	int	bi = decoder->bufferIndex ? 0 : 1;
+	decoder->data[bi][0] = 0;
+	decoder->data[bi][1] = 0;
+	decoder->data[bi][2] = 0;
+	decoder->size[bi] = 3;
+	interrupts();
 }
 
 void
@@ -99,7 +175,34 @@ CModule_DCC::EmergencyStop(
 	uint16_t	inCommandID,
 	uint8_t		inAddress)
 {
+	uint8_t	index = FindIndexFromID(inCommandID);
 
+	if(index >= eMaxCommandStations)
+	{
+		return;
+	}
+
+	SCommandState*	cs = commandStateList + index;
+
+	SDecoder*		decoder = cs->FindDecoder(inAddress);
+
+	if(decoder == NULL)
+	{
+		// Just take over slot 0 since this is an emergency
+		decoder = cs->decoderArray + 0;
+		decoder->address = inAddress;
+		decoder->direction = 0;
+		decoder->speed = 0;
+	}
+
+	noInterrupts();
+	int	bi = decoder->bufferIndex ? 0 : 1;
+	decoder->data[bi][0] = decoder->address;
+	decoder->data[bi][1] = 0x71;
+	decoder->data[bi][2] = decoder->data[bi][0] ^ decoder->data[bi][1];
+	decoder->size[bi] = 3;
+	decoder->transmitCount = 0;
+	interrupts();
 }
 	
 void
@@ -226,45 +329,17 @@ void
 CModule_DCC::SCommandState::Reset(
 	void)
 {
-	curPacketIndex = 0;
+	curDecoderTranxIndex = 0;
 	curByteIndex = 0;
 	curBitIndex = 0;
 	curPhase = 0;
-	nextPacketIndex = 0;
 
 	curPreambleBitCount = ePreambleBitCount;
 	curState = eState_Preamble;
 
-	memset(transmitBuffer, 0, sizeof(transmitBuffer));
-}
+	memset(decoderArray, 0, sizeof(decoderArray));
 
-bool
-CModule_DCC::SCommandState::AddPacket(
-	uint8_t			inSize,
-	uint8_t const*	inData)
-{
-	uint8_t	targetIndex;
-
-	for(int i = 0; i < eMaxPacketCount; ++i)
-	{
-		targetIndex = (nextPacketIndex + i) % eMaxPacketCount;
-		if(transmitBuffer[targetIndex].transmitCount == 0)
-		{
-			break;
-		}
-	}
-
-	if(targetIndex >= eMaxPacketCount)
-	{
-		return false;
-	}
-
-	nextPacketIndex = targetIndex + 1;
-	transmitBuffer[targetIndex].size = inSize;
-	memcpy(transmitBuffer[targetIndex].data, inData, inSize);
-	transmitBuffer[targetIndex].transmitCount = eTransmitCount;	// This must be set last since it triggers the interrupt track bit banger to start using data from this packet
-
-	return true;
+	curDecoderTranx = NULL;
 }
 
 bool
@@ -288,7 +363,7 @@ CModule_DCC::SCommandState::FindDecoder(
 			return decoderArray + i;
 		}
 
-		if(availIndex == 0xFFFF && decoderArray[i].address == 0xFFFF)
+		if(availIndex == 0xFFFF && decoderArray[i].address == 0)
 		{
 			availIndex = i;
 		}
@@ -311,16 +386,23 @@ void
 CModule_DCC::SCommandState::SendStandardSpeedAndDirectionPacket(
 	SDecoder*	inDecoder)
 {
-	uint8_t	data[3];
+	if(inDecoder->address > 127)
+	{
+		// Can use standard packet with addressed over 127
+		return;
+	}
 
 	uint8_t	dir = inDecoder->direction & 1;
 	uint8_t	speed = inDecoder->speed & 0x1F;
 
-	data[0] = inDecoder->address;
-	data[1] = (dir << 5) | ((speed & 1) << 4) | (speed >> 1);
-	data[2] = data[0] ^ data[1];
-
-	AddPacket(3, data);
+	noInterrupts();
+	int	bi = inDecoder->bufferIndex ? 0 : 1;
+	inDecoder->data[bi][0] = inDecoder->address;
+	inDecoder->data[bi][1] = 0x40 | (dir << 5) | ((speed & 1) << 4) | (speed >> 1);
+	inDecoder->data[bi][2] = inDecoder->data[bi][0] ^ inDecoder->data[bi][1];
+	inDecoder->size[bi] = 3;
+	inDecoder->transmitCount = 0;
+	interrupts();
 }
 
 bool
@@ -335,7 +417,7 @@ CModule_DCC::SCommandState::GetNextWaveformBit(
 		}
 		else
 		{
-			if(transmitBuffer[curPacketIndex].transmitCount > 0)
+			if(curDecoderTranx != NULL)
 			{
 				// We have a packet to transmit so start it going
 				curState = eState_StartBit;
@@ -353,7 +435,7 @@ CModule_DCC::SCommandState::GetNextWaveformBit(
 	if(curState == eState_StartBit)
 	{
 		// Get the next byte ready to go
-		curByte = transmitBuffer[curPacketIndex].data[curByteIndex++];
+		curByte = curDecoderTranx->data[curBufferIndex][curByteIndex++];
 		curBitIndex = 0;
 		curState = eState_Byte;
 
@@ -368,7 +450,7 @@ CModule_DCC::SCommandState::GetNextWaveformBit(
 		{
 			// We are done transmitting all 8 bits
 
-			if(curByteIndex >= transmitBuffer[curPacketIndex].size)
+			if(curByteIndex >= curDecoderTranx->size[curBufferIndex])
 			{
 				// There are no more bytes so handle end of packet
 				curState = eState_EndPacket;
@@ -381,7 +463,7 @@ CModule_DCC::SCommandState::GetNextWaveformBit(
 		}
 		else
 		{
-			// Move the next bit into the high bit for transmition
+			// Move the next bit into the high bit for transmission
 			++curBitIndex;
 			curByte <<= 1;
 		}
@@ -391,16 +473,41 @@ CModule_DCC::SCommandState::GetNextWaveformBit(
 
 	// We must be in the eState_EndPacket, if we are not in any other state just assume this state
 
-	// Try to find another packet
-	for(int i = 0; i < eMaxPacketCount; ++i)
+	if(curDecoderTranx->transmitCount > 0)
 	{
-		int	curIndex = (curPacketIndex + i) % eMaxPacketCount;
-		if(transmitBuffer[curIndex].transmitCount > 0)
+		// Decrement transmit count
+		--curDecoderTranx->transmitCount;
+	}
+	else
+	{
+		// Signal this buffer is empty
+		curDecoderTranx->size[curBufferIndex] = 0;
+	}
+
+	// Try to find another packet
+	bool	newPacketFound = false;
+	for(int i = 0; i < eMaxDecoders; ++i)
+	{
+		int	curIndex = (curDecoderTranxIndex + 1 + i) % eMaxDecoders;
+		int bi = decoderArray[curIndex].bufferIndex ? 0 : 1;	// Use the next buffer index
+		if(decoderArray[curIndex].size[bi] > 0)
 		{
-			--transmitBuffer[curIndex].transmitCount;
-			curPacketIndex = curIndex + 1;
+			curDecoderTranxIndex = curIndex;
+			newPacketFound = true;
 			break;
 		}
+	}
+
+	if(newPacketFound)
+	{
+		curDecoderTranx = decoderArray + curDecoderTranxIndex;
+		curDecoderTranx->bufferIndex = curDecoderTranx->bufferIndex ? 0 : 1;
+		curDecoderTranx->transmitCount = eTransmitCount;
+		curBufferIndex = curDecoderTranx->bufferIndex;
+	}
+	else
+	{
+		curDecoderTranx = NULL;
 	}
 
 	curByteIndex = 0;
@@ -472,4 +579,3 @@ CModule_DCC::FindIndexFromID(
 
 	return 0xFF;
 }
-

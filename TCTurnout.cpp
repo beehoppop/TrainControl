@@ -19,7 +19,7 @@ enum
 };
 
 const float	gTouchPulsesPerSecond = 2.0;
-const uint8_t	cHighLEDChannel = 0xC0;
+const uint8_t	cHighLEDChannel = 0x40;
 
 CModule_Turnout gTurnout;
 
@@ -48,12 +48,10 @@ CModule_Turnout::Setup(
 
 	for(int i = 0; i < eMaxTrackTurnoutCount; ++i)
 	{
-		if(turnoutConfigArray[i].id >= eMaxTurnoutID || turnoutConfigArray[i].straightDOutPin >= eDIOPinCount || turnoutConfigArray[i].turnDOutPin >= eDIOPinCount)
+		if(turnoutConfigArray[i].id < eMaxTurnoutID)
 		{
-			continue;
+			ActivateTurnout(i, turnoutDirectionArray[i]);
 		}
-
-		ActivateTurnout(i, turnoutDirectionArray[i]);
 	}
 }
 
@@ -63,7 +61,12 @@ CModule_Turnout::ControlSwitchTouchedTurnoutID(
 	bool		inTouched,
 	bool		inBroadcast)
 {
-	//DebugMsg(eDbgLevel_Verbose, "TO: touched %d %d\n", inTurnoutID, inTouched);
+	DebugMsg(eDbgLevel_Verbose, "TO: touched %d %d\n", inTurnoutID, inTouched);
+
+	if(inTurnoutID >= eMaxTurnoutID)
+	{
+		return;
+	}
 
 	if(inBroadcast)
 	{
@@ -96,10 +99,18 @@ CModule_Turnout::SetTurnoutDirection(
 	uint16_t	inTurnoutID,
 	uint8_t		inDirection)
 {
+	if(inTurnoutID >= eMaxTurnoutID)
+	{
+		return;
+	}
+
 	uint8_t	tableIndex = turnoutIDToTableIndexMap[inTurnoutID];
 
-	ActivateTurnout(tableIndex, inDirection);
-	EEPROM.write(turnoutDirectionOffset + tableIndex, inDirection == eTurnDir_Straight ? eTurnDir_Straight : eTurnDir_Turnout);
+	if(tableIndex < eMaxTrackTurnoutCount)
+	{
+		ActivateTurnout(tableIndex, inDirection);
+		EEPROM.write(turnoutDirectionOffset + tableIndex, inDirection == eTurnDir_Straight ? eTurnDir_Straight : eTurnDir_Turnout);
+	}
 }
 
 void
@@ -110,14 +121,20 @@ CModule_Turnout::ActivateTurnout(
 	if(inDirection == eTurnDir_Straight)
 	{
 		DebugMsg(eDbgLevel_Basic, "TO: %d to straight, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].straightDOutPin);
-		gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].turnDOutPin);
-		gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].straightDOutPin, eMotorOnTimeMS);
+		if(turnoutConfigArray[inTableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[inTableIndex].straightDOutPin < eDIOPinCount)
+		{
+			gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].turnDOutPin);
+			gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].straightDOutPin, eMotorOnTimeMS);
+		}
 	}
 	else
 	{
 		DebugMsg(eDbgLevel_Basic, "TO: %d to turn, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].turnDOutPin);
-		gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].straightDOutPin);
-		gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].turnDOutPin, eMotorOnTimeMS);
+		if(turnoutConfigArray[inTableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[inTableIndex].straightDOutPin < eDIOPinCount)
+		{
+			gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].straightDOutPin);
+			gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].turnDOutPin, eMotorOnTimeMS);
+		}
 	}
 
 	uint8_t	turnR, turnG;
@@ -233,13 +250,18 @@ CModule_Turnout::TableUpdate(
 	memset(turnoutIDToLEDNumMap, 0, sizeof(turnoutIDToLEDNumMap));
 	memset(turnoutIDToTableIndexMap, 0xFF, sizeof(turnoutIDToTableIndexMap));
 
+	int	numLEDs = gConfig.GetVal(eConfigVar_LEDCount);
+
 	for(int i = 0; i < eMaxTrackTurnoutCount; ++i)
 	{
 		if(turnoutConfigArray[i].id < eMaxTurnoutID)
 		{
 			turnoutIDToTableIndexMap[turnoutConfigArray[i].id] = i;
-			pinMode(turnoutConfigArray[i].straightDOutPin, OUTPUT);
-			pinMode(turnoutConfigArray[i].turnDOutPin, OUTPUT);
+			if(turnoutConfigArray[i].straightDOutPin < eDIOPinCount && turnoutConfigArray[i].turnDOutPin < eDIOPinCount)
+			{
+				pinMode(turnoutConfigArray[i].straightDOutPin, OUTPUT);
+				pinMode(turnoutConfigArray[i].turnDOutPin, OUTPUT);
+			}
 		}
 
 		if(turnoutLEDMapConfigArray[i].turnoutID < eMaxTurnoutID)
@@ -248,8 +270,8 @@ CModule_Turnout::TableUpdate(
 
 			for(int j = 0; j < 2; ++j)
 			{
-				if(turnoutLEDMapConfigArray[i].straightLEDNum[j] < eMaxLEDCount
-					&& turnoutLEDMapConfigArray[i].turnoutLEDNum[j] < eMaxLEDCount)
+				if(turnoutLEDMapConfigArray[i].straightLEDNum[j] < numLEDs
+					&& turnoutLEDMapConfigArray[i].turnoutLEDNum[j] < numLEDs)
 				{
 					if(ledNumList->count >= eMaxTurnoutsPerSwitch)
 					{
