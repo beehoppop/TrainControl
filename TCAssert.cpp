@@ -5,6 +5,7 @@
 #include "TCAssert.h"
 #include "TCConfig.h"
 #include "TCAction.h"
+#include "TCCANBus.h"
 
 uint8_t	gLevel = eDbgLevel_Verbose;
 
@@ -16,7 +17,7 @@ AssertFailed(
 {
 	for(;;)
 	{
-		Serial.printf("ASSERT: %s %d %s\n", inFile, inLine, inMsg);
+		DebugMsg(0, "ASSERT: %s %d %s\n", inFile, inLine, inMsg);
 	}
 }
 
@@ -31,13 +32,16 @@ DebugMsg(
 
 	va_list	varArgs;
 	va_start(varArgs, inMsg);
-	#if 1
-		gAction.SendSerialVA(gConfig.GetVal(eConfigVar_NodeID), inMsg, varArgs);	// XXX - Add a config var for the serial port node id and send messages to there
-	#else
-		char	buffer[512];
-		vsnprintf(buffer, sizeof(buffer), inMsg, varArgs);
-		Serial.print(buffer);
-	#endif
-
+	char	buffer[512];
+	vsnprintf(buffer, sizeof(buffer), inMsg, varArgs);
 	va_end(varArgs);
+
+	Serial.printf("[%d] %s", gConfig.GetVal(eConfigVar_NodeID), buffer);
+
+	uint8_t	debugNode = gConfig.GetVal(eConfigVar_DebugNode);
+
+	if(debugNode != 0xFF && gCANBus.Ready())
+	{
+		gAction.SendSerial(debugNode, "[%d] %s", gConfig.GetVal(eConfigVar_NodeID), buffer);
+	}
 }

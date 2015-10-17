@@ -20,9 +20,10 @@ class CModule
 public:
 	
 	CModule(
-		uint32_t	inUID,
+		char const*	inUID,
 		uint16_t	inEEPROMSize,
-		uint32_t	inUpdateTimeUS = 0);
+		uint32_t	inUpdateTimeUS = 0,
+		uint8_t		inPriority = 0);
 
 	virtual void
 	Setup(
@@ -68,6 +69,7 @@ protected:
 	uint16_t		eepromOffset;
 	uint32_t		updateTimeUS;
 	uint32_t		lastUpdateUS;
+	uint8_t			priority;
 };
 
 extern uint32_t		gCurTimeMS;

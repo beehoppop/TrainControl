@@ -11,7 +11,7 @@
 CModule_Config::CModule_Config(
 	)
 	:
-	CModule(MMakeUID('c', 'n', 'f', 'g'), sizeof(configVar))
+	CModule("cnfg", sizeof(configVar), 0, 255)
 {
 	configVar[eConfigVar_DebugLevel] = eDbgLevel_Basic;
 }

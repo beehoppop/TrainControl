@@ -67,7 +67,7 @@ public:
 	CModule_SerialInput(
 		)
 		:
-		CModule(MMakeUID('s', 'r', 'i', 'l'), 0)
+		CModule("sril", 0, 1000)
 	{
 	}
 
@@ -151,7 +151,7 @@ public:
 
 		if(!IsStrDigit(inComponents[0]))
 		{
-			Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric ID but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -160,7 +160,7 @@ public:
 		msg.direction = GetTurnoutDirection(inComponents[1]);
 		if(msg.direction == 0xFF)
 		{
-			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting position but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 		gControlSwitch.ControlSwitchActivated(msg.id, msg.direction);
@@ -187,13 +187,17 @@ public:
 		{
 			msg.configVar = eConfigVar_LEDSPIPin;
 		}
-		else if(strcmp(inComponents[2], "built_in_touch") == 0)
+		else if(strcmp(inComponents[2], "touch_mode") == 0)
 		{
-			msg.configVar = eConfigVar_BuiltInTouch;
+			msg.configVar = eConfigVar_TouchMode;
+		}
+		else if(strcmp(inComponents[2], "debug_node") == 0)
+		{
+			msg.configVar = eConfigVar_DebugNode;
 		}
 		else
 		{
-			Serial.printf("Expecting valid config var but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting valid config var but got \"%s\"\n", inComponents[2]);
 			return false;
 		}
 
@@ -263,13 +267,13 @@ public:
 			}
 			else
 			{
-				Serial.printf("invalid led command, expected on or off \"%s\"\n", inComponents[2]);
+				DebugMsg(eDbgLevel_Basic, "invalid led command, expected on or off \"%s\"\n", inComponents[2]);
 				return false;
 			}
 		}
 		else
 		{
-			Serial.printf("invalid led command \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "invalid led command \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -288,7 +292,7 @@ public:
 		}
 		else
 		{
-			Serial.printf("Expecting valid state var but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting valid state var but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 
@@ -323,7 +327,7 @@ public:
 
 		if(!IsStrDigit(inComponents[0]))
 		{
-			Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric ID but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -332,7 +336,7 @@ public:
 		msg.direction = GetTurnoutDirection(inComponents[1]);
 		if(msg.direction == 0xFF)
 		{
-			Serial.printf("Expecting position but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting position but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 		gTurnout.SetTurnoutDirection(msg.id, msg.direction);
@@ -347,19 +351,19 @@ public:
 	{
 		if(!IsStrAlpha(inComponents[0]))
 		{
-			Serial.printf("Expecting alpha table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting alpha table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 	
 		if(!IsStrDigit(inComponents[1]))
 		{
-			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric node id but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 	
 		if(!IsStrDigit(inComponents[2]))
 		{
-			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[2]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric table index but got \"%s\"\n", inComponents[2]);
 			return false;
 		}
 	
@@ -374,22 +378,22 @@ public:
 			// control_switch [table index] [cs id] [straight pin] [turnout pin] [touch id]
 			if(!IsStrDigit(inComponents[3]))
 			{
-				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[3]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric ID but got \"%s\"\n", inComponents[3]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[4]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[4]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric pin but got \"%s\"\n", inComponents[4]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[5]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric pin but got \"%s\"\n", inComponents[5]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[6]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric pin but got \"%s\"\n", inComponents[5]);
 				return false;
 			}
 
@@ -404,17 +408,17 @@ public:
 			// track_turnout [table index] [cs id] [straight pin] [turnout pin] 
 			if(!IsStrDigit(inComponents[3]))
 			{
-				Serial.printf("Expecting numeric ID but got \"%s\"\n", inComponents[3]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric ID but got \"%s\"\n", inComponents[3]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[4]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[4]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric pin but got \"%s\"\n", inComponents[4]);
 				return false;
 			}
 			if(!IsStrDigit(inComponents[5]))
 			{
-				Serial.printf("Expecting numeric pin but got \"%s\"\n", inComponents[5]);
+				DebugMsg(eDbgLevel_Basic, "Expecting numeric pin but got \"%s\"\n", inComponents[5]);
 				return false;
 			}
 
@@ -479,7 +483,7 @@ public:
 		}
 		else
 		{
-			Serial.printf("Expecting valid table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting valid table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -492,19 +496,19 @@ public:
 	{
 		if(!IsStrAlpha(inComponents[0]))
 		{
-			Serial.printf("Expecting alpha table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting alpha table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 	
 		if(!IsStrDigit(inComponents[1]))
 		{
-			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric node id but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 	
 		if(!IsStrDigit(inComponents[2]))
 		{
-			Serial.printf("Expecting numeric table index but got \"%s\"\n", inComponents[2]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric table index but got \"%s\"\n", inComponents[2]);
 			return false;
 		}
 	
@@ -540,7 +544,7 @@ public:
 		}
 		else
 		{
-			Serial.printf("Expecting valid table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting valid table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -553,13 +557,13 @@ public:
 	{
 		if(!IsStrAlpha(inComponents[0]))
 		{
-			Serial.printf("Expecting alpha table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting alpha table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 	
 		if(!IsStrDigit(inComponents[1]))
 		{
-			Serial.printf("Expecting numeric node id but got \"%s\"\n", inComponents[1]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric node id but got \"%s\"\n", inComponents[1]);
 			return false;
 		}
 	
@@ -595,7 +599,7 @@ public:
 		}
 		else
 		{
-			Serial.printf("Expecting valid table type but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting valid table type but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -611,7 +615,7 @@ public:
 
 		if(!IsStrDigit(inComponents[0]))
 		{
-			Serial.printf("Expecting numeric command buffer ID but got \"%s\"\n", inComponents[0]);
+			DebugMsg(eDbgLevel_Basic, "Expecting numeric command buffer ID but got \"%s\"\n", inComponents[0]);
 			return false;
 		}
 
@@ -759,7 +763,7 @@ public:
 
 		if(!IsStrAlpha(components[0]))
 		{
-			Serial.printf("expecting string but got \"%s\"\n", components[0]);
+			DebugMsg(eDbgLevel_Basic, "expecting string but got \"%s\"\n", components[0]);
 			return false;
 		}
 
@@ -820,7 +824,7 @@ public:
 			return ProcessSerialMsg_ResetAllStateCommand(components + 1);
 		}
 
-		Serial.printf("expecting valid command but got \"%s\"\n", components[0]);
+		DebugMsg(eDbgLevel_Basic, "expecting valid command but got \"%s\"\n", components[0]);
 
 		return false;
 	}

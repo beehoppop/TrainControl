@@ -127,7 +127,7 @@ MPR121SetRegister(
 CModule_MPR121::CModule_MPR121(
 	)
 	:
-	CModule(MMakeUID('m', 'p', 'r', '1'), 0, eUpdateTimeUS)
+	CModule("mpr1", 0, eUpdateTimeUS)
 {
 
 }

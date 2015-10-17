@@ -28,7 +28,7 @@ CModule_DCC gDCC;
 CModule_DCC::CModule_DCC(
 	)
 	:
-	CModule(MMakeUID('d', 'c', 'c', 't'), sizeof(commandConfigList))
+	CModule("dcct", sizeof(commandConfigList))
 {
 
 }

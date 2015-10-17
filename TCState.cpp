@@ -9,7 +9,7 @@
 CModule_State::CModule_State(
 	)
 	:
-	CModule(MMakeUID('s', 't', 'a', 't'), 0)
+	CModule("stat", 0)
 {
 	memset(stateVar, 0, sizeof(stateVar));
 }

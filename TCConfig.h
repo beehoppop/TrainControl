@@ -11,13 +11,21 @@
 
 #include "TCModule.h"
 
+enum ETouchMode
+{
+	eTouchMode_Off,
+	eTouchMode_BuiltIn,
+	eTouchMode_MPR121
+};
+
 enum
 {
 	eConfigVar_NodeID,
 	eConfigVar_DebugLevel,
 	eConfigVar_LEDCount,
 	eConfigVar_LEDSPIPin,
-	eConfigVar_BuiltInTouch,
+	eConfigVar_TouchMode,
+	eConfigVar_DebugNode,	// Serial port if 0xFF
 
 	eConfigVar_Max = 16
 };

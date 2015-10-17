@@ -82,7 +82,7 @@ private:
 		uint32_t	touchDownTimeMS;
 	};
 
-	bool								usingBuiltInTouch;
+	bool								touchMode;
 	SControlSwitchConfig				controlSwitchArray[eMaxControlSwitchCount];
 	SControlSwitchToTurnoutMapConfig	controlSwitchToTurnoutMapArray[eMaxControlSwitchToTurnoutMapCount];
 	uint8_t								touchIDToControlSwitchIndexMap[eDIOPinCount];

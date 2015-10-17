@@ -46,10 +46,11 @@ CANIDFromComponents(
 CModule_CANBus::CModule_CANBus(
 	)
 	:
-	CModule(MMakeUID('c', 'a', 'n', 'b'), 0),
+	CModule("canb", 0, 10, 254),
 	canBus(500000)
 {
-
+	canBus.begin();
+	ready = true;
 }
 
 void
@@ -73,7 +74,7 @@ CModule_CANBus::SendMsg(
 	if(inMsgData != NULL && inMsgSize > 0)
 		memcpy(msg.buf, inMsgData, inMsgSize);
 	
-	DumpMsg(msg);
+	//DumpMsg(msg);
 
 	canBus.write(msg);
 }
@@ -120,14 +121,12 @@ void
 CModule_CANBus::Setup(
 	void)
 {
-	canBus.begin();
 }
 	
 void
 CModule_CANBus::TearDown(
 	void)
 {
-	canBus.end();
 }
 
 void
@@ -141,8 +140,8 @@ CModule_CANBus::ProcessCANMsg(
 
 	CANIDToComponents(inMsg.id, srcNode, dstNode, msgType, flags);
 
-	Serial.printf("CAN: %02x RCV src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gConfig.GetVal(eConfigVar_NodeID), srcNode, dstNode, msgType, flags);
-	DumpMsg(inMsg);
+	//DebugMsg(eDbgLevel_Basic, "CAN: %02x RCV src=0x%x dst=0x%x typ=0x%x flg=0x%x\n", gConfig.GetVal(eConfigVar_NodeID), srcNode, dstNode, msgType, flags);
+	//DumpMsg(inMsg);
 
 	if(dstNode != 0xFF && dstNode != gConfig.GetVal(eConfigVar_NodeID))
 		return;
@@ -255,6 +254,13 @@ CModule_CANBus::Update(
 		canBus.read(msg);
 		ProcessCANMsg(msg);
 	}
+}
+
+bool
+CModule_CANBus::Ready(
+	void)
+{
+	return ready;
 }
 
 void

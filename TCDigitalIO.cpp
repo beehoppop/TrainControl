@@ -23,7 +23,7 @@ CModule_DigitalIO	gDigitalIO;
 CModule_DigitalIO::CModule_DigitalIO(
 	)
 	:
-	CModule(MMakeUID('d', 'g', 'i', 'o'), 0, eUpdateTimeUS)
+	CModule("dgio", 0, eUpdateTimeUS)
 {
 	memset(inputPinLastChange, 0, sizeof(inputPinLastChange));
 	memset(inputPinLastState, 0, sizeof(inputPinLastState));

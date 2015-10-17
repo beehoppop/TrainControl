@@ -55,7 +55,7 @@ enum
 CModule_TeensyTouch::CModule_TeensyTouch(
 	)
 	:
-	CModule(MMakeUID('t', 'y', 't', 'c'), 0, eUpdateTimeUS)
+	CModule("tytc", 0, eUpdateTimeUS)
 {
 
 }
@@ -79,7 +79,7 @@ CModule_TeensyTouch::Update(
 		}
 
 		int	readValue = touchRead(itr);
-		//Serial.printf("TTch: %d %d\n", itr, readValue);
+		//DebugMsg(eDbgLevel_Basic, "TTch: %d %d\n", itr, readValue);
 
 		bool touched = readValue > eTouchThreshold;
 

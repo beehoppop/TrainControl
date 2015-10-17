@@ -26,7 +26,7 @@ CModule_Turnout gTurnout;
 CModule_Turnout::CModule_Turnout(
 	)
 	:
-	CModule(MMakeUID('t', 'r', 'n', 'o'), sizeof(turnoutConfigArray) + sizeof(turnoutLEDMapConfigArray) + sizeof(turnoutDirectionArray))
+	CModule("trno", sizeof(turnoutConfigArray) + sizeof(turnoutLEDMapConfigArray) + sizeof(turnoutDirectionArray))
 {
 	
 }

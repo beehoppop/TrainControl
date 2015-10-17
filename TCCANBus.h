@@ -45,6 +45,9 @@ public:
 		char const*	inMsg,
 		...);
 
+	bool
+	Ready(
+		void);
 
 private:
 
@@ -57,6 +60,7 @@ private:
 		CAN_message_t const&	inMsg);
 
 	FlexCAN	canBus;
+	bool	ready;
 };
 
 extern CModule_CANBus gCANBus;

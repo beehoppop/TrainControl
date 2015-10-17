@@ -9,8 +9,6 @@
 	#include "WProgram.h"
 #endif
 
-#define MMakeUID(c0, c1, c2, c3) (((uint32_t)(c0) << 24) | ((uint32_t)(c1) << 16) | ((uint32_t)(c2) << 8) | ((uint32_t)(c3) << 0))
-
 bool
 IsStrDigit(
 	char const*	inStr);

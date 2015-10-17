@@ -25,7 +25,7 @@ enum
 
 	eInvalidID = 0xFFFF,
 
-	eEEPROMVersion = 9,
+	eEEPROMVersion = 1,
 
 	eTurnDir_Straight = 0,
 	eTurnDir_Turnout,

@@ -18,6 +18,7 @@ enum
 };
 
 #define MDebugModules 0
+#define MDebugDelayStart 0
 
 struct SEEPROMEntry
 {
@@ -36,13 +37,15 @@ uint32_t	gCurTimeMS;
 uint32_t	gCurTimeUS;
 
 CModule::CModule(
-	uint32_t	inUID,
+	char const*	inUID,
 	uint16_t	inEEPROMSize,
-	uint32_t	inUpdateTimeUS)
+	uint32_t	inUpdateTimeUS,
+	uint8_t		inPriority)
 	:
-	uid(inUID),
+	uid((inUID[0] << 24) | (inUID[1] << 16) | (inUID[2] << 8) | inUID[3]),
 	eepromSize(inEEPROMSize),
-	updateTimeUS(inUpdateTimeUS)
+	updateTimeUS(inUpdateTimeUS),
+	priority(inPriority)
 {
 	if(gModuleCount >= eMaxModuleCount)
 	{
@@ -175,7 +178,7 @@ CModule::SetupAll(
 	{
 		while(true)
 		{
-			Serial.printf("Too Many Modules\n");
+			Serial.printf("Too Many Modules\n");	// This msg is too early for anything but serial
 		}
 	}
 
@@ -260,15 +263,25 @@ CModule::SetupAll(
 	gCurTimeUS = micros();
 	uint32_t	timeOffsetUS = 0;
 
-	for(int i = 0; i < gModuleCount; ++i)
+	#if MDebugDelayStart
+	delay(6000);
+	#endif
+
+	for(int priorityItr = 256; priorityItr-- > 0;)
 	{
-		DebugMsg(eDbgLevel_Medium, "Module: Setup %s\n", StringizeUInt32(gModuleList[i]->uid));
-		#if MDebugModules
-		delay(3000);
-		#endif
-		gModuleList[i]->Setup();
-		gModuleList[i]->lastUpdateUS = gCurTimeUS + timeOffsetUS;
-		timeOffsetUS += gModuleList[i]->updateTimeUS;
+		for(int i = 0; i < gModuleCount; ++i)
+		{
+			if(gModuleList[i]->priority == priorityItr)
+			{
+				DebugMsg(eDbgLevel_Medium, "Module: Setup %s\n", StringizeUInt32(gModuleList[i]->uid));
+				#if MDebugModules
+				delay(3000);
+				#endif
+				gModuleList[i]->Setup();
+				gModuleList[i]->lastUpdateUS = gCurTimeUS + timeOffsetUS;
+				timeOffsetUS += gModuleList[i]->updateTimeUS;
+			}
+		}
 	}
 
 	#if MDebugModules
@@ -280,13 +293,19 @@ void
 CModule::TearDownAll(
 	void)
 {
-	for(int i = 0; i < gModuleCount; ++i)
+	for(int priorityItr = 0; priorityItr < 256; ++priorityItr)
 	{
-		DebugMsg(eDbgLevel_Medium, "Module: TearDown %s\n", StringizeUInt32(gModuleList[i]->uid));
-		#if MDebugModules
-		delay(3000);
-		#endif
-		gModuleList[i]->TearDown();
+		for(int i = 0; i < gModuleCount; ++i)
+		{
+			if(gModuleList[i]->priority == priorityItr)
+			{
+				#if MDebugModules
+				DebugMsg(eDbgLevel_Medium, "Module: TearDown %s\n", StringizeUInt32(gModuleList[i]->uid));
+				delay(3000);
+				#endif
+				gModuleList[i]->TearDown();
+			}
+		}
 	}
 
 	gTearingDown = true;
@@ -300,18 +319,20 @@ void
 CModule::ResetAllState(
 	void)
 {
+	TearDownAll();
+
 	for(int i = 0; i < gModuleCount; ++i)
 	{
 		DebugMsg(eDbgLevel_Medium, "Module: ResetState %s\n", StringizeUInt32(gModuleList[i]->uid));
 		#if MDebugModules
 		delay(3000);
 		#endif
-		gModuleList[i]->TearDown();
 		gModuleList[i]->ResetState();
-		gModuleList[i]->Setup();
 	}
 
-		gTearingDown = true;
+	SetupAll();
+
+	gTearingDown = true;
 
 	#if MDebugModules
 	DebugMsg(eDbgLevel_Medium, "Module: ResetAllState Complete\n");
@@ -322,6 +343,7 @@ void
 CModule::LoopAll(
 	void)
 {
+
 	for(int i = 0; i < gModuleCount; ++i)
 	{
 		if(gTearingDown)
@@ -335,6 +357,7 @@ CModule::LoopAll(
 		uint32_t	updateDeltaUS = gCurTimeUS - gModuleList[i]->lastUpdateUS;
 		if(updateDeltaUS >= gModuleList[i]->updateTimeUS)
 		{
+			//Serial.printf("Updating %s\n", StringizeUInt32(gModuleList[i]->uid));
 			gModuleList[i]->Update(updateDeltaUS);
 			gModuleList[i]->lastUpdateUS = gCurTimeUS;
 		}

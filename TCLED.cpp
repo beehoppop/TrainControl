@@ -42,7 +42,7 @@ static uint32_t		gNumLEDs;
 CLEDClass::CLEDClass(
 	)
 	:
-	CModule(MMakeUID('l', 'e', 'd', 's'), 0, eUpdateTimeUS)
+	CModule("leds", 0, eUpdateTimeUS)
 {
 
 }
@@ -52,9 +52,10 @@ CLEDClass::Setup(
 	void)
 {
 	gNumLEDs = gConfig.GetVal(eConfigVar_LEDCount);
-	if(gNumLEDs > eMaxLEDs)
+
+	if(gNumLEDs == 0 || gNumLEDs >= eMaxLEDs)
 	{
-		gNumLEDs = eMaxLEDs;
+		return;
 	}
 
 	if(gConfig.GetVal(eConfigVar_LEDSPIPin))
@@ -72,6 +73,11 @@ CLEDClass::Update(
 	uint32_t	inDeltaTimeUS)
 {
 	double	curMS = (double)gCurTimeMS;
+
+	if(gNumLEDs == 0 || gNumLEDs >= eMaxLEDs)
+	{
+		return;
+	}
 
 	//DebugMsg(eDbgLevel_Verbose, "LED: updating %u\n", gCurTimeMS);
 

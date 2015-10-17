@@ -28,7 +28,7 @@ CModule_ControlSwitch	gControlSwitch;
 CModule_ControlSwitch::CModule_ControlSwitch(
 	)
 	:
-	CModule(MMakeUID('c', 'n', 's', 'w'), sizeof(controlSwitchArray) + sizeof(controlSwitchToTurnoutMapArray), eUpdateTimeUS)
+	CModule("cnsw", sizeof(controlSwitchArray) + sizeof(controlSwitchToTurnoutMapArray), eUpdateTimeUS)
 {
 
 }
@@ -37,7 +37,7 @@ void
 CModule_ControlSwitch::Setup(
 	void)
 {
-	usingBuiltInTouch = gConfig.GetVal(eConfigVar_BuiltInTouch) != 0;
+	touchMode = gConfig.GetVal(eConfigVar_TouchMode);
 
 	LoadDataFromEEPROM(controlSwitchArray, eepromOffset, sizeof(controlSwitchArray));
 	LoadDataFromEEPROM(controlSwitchToTurnoutMapArray, eepromOffset + sizeof(controlSwitchArray), sizeof(controlSwitchToTurnoutMapArray));
@@ -45,7 +45,7 @@ CModule_ControlSwitch::Setup(
 	SMsg_Table	dummy;
 	TableUpdate(0, dummy);
 
-	if(usingBuiltInTouch)
+	if(touchMode == eTouchMode_BuiltIn)
 	{
 		uint32_t	touchBV = 0;
 
@@ -59,7 +59,7 @@ CModule_ControlSwitch::Setup(
 
 		TeensyRegisterTouchSensor(touchBV, this);
 	}
-	else
+	else if(touchMode == eTouchMode_MPR121)
 	{
 		MPRRegisterTouchSensor(0, this);
 	}
@@ -69,11 +69,11 @@ void
 CModule_ControlSwitch::TearDown(
 	void)
 {
-	if(usingBuiltInTouch)
+	if(touchMode == eTouchMode_BuiltIn)
 	{
 		TeensyUnRegisterTouchSensor(this);
 	}
-	else
+	else if(touchMode == eTouchMode_MPR121)
 	{
 		MPRUnRegisterTouchSensor(0, this);
 	}
