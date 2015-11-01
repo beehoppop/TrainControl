@@ -28,16 +28,15 @@ struct SLEDState
 	float	pulsesPerSecond;
 	bool	pulsing;
 	bool	pulsingTransitionOff;
-	float	pulseStartTime;
-	float	transitionStartTime;
-	float	transitionFinishTime;
+	uint32_t	pulseStartTime;
+	uint32_t	transitionStartTime;
+	uint32_t	transitionFinishTime;
 };
 
-CRGB gFastLEDData[eMaxLEDs];
-
-static SLEDState	gLEDState[eMaxLEDs];
-static bool			gUpdateLEDs = false;
 static uint32_t		gNumLEDs;
+static SLEDState	gLEDState[eMaxLEDs];
+static CRGB			gFastLEDData[eMaxLEDs];
+static bool			gCycle;
 
 CLEDClass::CLEDClass(
 	)
@@ -66,27 +65,52 @@ CLEDClass::Setup(
 	{
 		FastLED.addLeds<WS2812, eLEDDataPin>(gFastLEDData, gNumLEDs);
 	}
+
+	memset(gLEDState, 0, sizeof(gLEDState));
+	memset(gFastLEDData, 0, sizeof(gFastLEDData));
+
+	FastLED.show();
 }
 
 void
 CLEDClass::Update(
 	uint32_t	inDeltaTimeUS)
 {
-	double	curMS = (double)gCurTimeMS;
-
 	if(gNumLEDs == 0 || gNumLEDs >= eMaxLEDs)
 	{
 		return;
 	}
+
+	uint8_t	newR;
+	uint8_t newG;
+	uint8_t newB;
+
+	if(gCycle)
+	{
+		for(uint32_t itr = 0; itr < gNumLEDs; ++itr)
+		{
+			uint32_t	offset = itr * 1000 / gNumLEDs;
+			float	timeVal = float((gCurTimeMS + offset) % 1000) / 1000.0;
+
+			newR = (cos((timeVal * 1.0f) * PI * 2) + 1.0f) / 2.0f * 255.0;
+			newG = (cos((timeVal * 2.0f) * PI * 2) + 1.0f) / 2.0f * 255.0;
+			newB = (cos((timeVal * 3.0f) * PI * 2) + 1.0f) / 2.0f * 255.0;
+			gFastLEDData[itr].r = newR;
+			gFastLEDData[itr].g = newG;
+			gFastLEDData[itr].b = newB;
+		}
+
+		FastLED.show();
+		return;
+	}
+
+	bool	updateLEDs = false;
 
 	//DebugMsg(eDbgLevel_Verbose, "LED: updating %u\n", gCurTimeMS);
 
 	for(uint32_t itr = 0; itr < gNumLEDs; ++itr)
 	{
 		SLEDState*	curState = gLEDState + itr;
-		uint8_t	newR = curState->r;
-		uint8_t newG = curState->g;
-		uint8_t newB = curState->b;
 
 		if(curState->transitionFinishTime > curState->transitionStartTime)
 		{
@@ -106,12 +130,18 @@ CLEDClass::Update(
 				newG = (uint8_t)((float)curState->g * transFactorInv + (float)curState->targetG * transFactor);
 				newB = (uint8_t)((float)curState->b * transFactorInv + (float)curState->targetB * transFactor);
 			}
-			gUpdateLEDs = true;
+			updateLEDs = true;
+		}
+		else
+		{
+			newR = curState->r;
+			newG = curState->g;
+			newB = curState->b;
 		}
 
 		if(curState->pulsing || curState->pulsingTransitionOff)
 		{
-			float	scaleFactor = (cos((curMS - curState->pulseStartTime) / 1000.0 * curState->pulsesPerSecond * PI * 2) + 1.0f) / 2.0f;
+			float	scaleFactor = (cos((float)(gCurTimeMS - curState->pulseStartTime) / 1000.0 * curState->pulsesPerSecond * PI * 2) + 1.0f) / 2.0f;
 			
 			//DebugMsg(eDbgLevel_Verbose, "LED: pulse scale %d %d %f\n", itr, inDeltaTimeUS, scaleFactor);
 
@@ -120,13 +150,14 @@ CLEDClass::Update(
 				DebugMsg(eDbgLevel_Verbose, "LED: pulse off %d\n", itr);
 				curState->pulsing = false;
 				curState->pulsingTransitionOff = false;
+				scaleFactor = 1.0f;
 			}
 
 			newR = (uint8_t)(scaleFactor * (float)newR);
 			newG = (uint8_t)(scaleFactor * (float)newG);
 			newB = (uint8_t)(scaleFactor * (float)newB);
 
-			gUpdateLEDs = true;
+			updateLEDs = true;
 		}
 
 		gFastLEDData[itr].r = newR;
@@ -134,10 +165,10 @@ CLEDClass::Update(
 		gFastLEDData[itr].b = newB;
 	}
 
-	if(gUpdateLEDs)
+	if(updateLEDs)
 	{
 		FastLED.show();
-		gUpdateLEDs = false;
+		updateLEDs = false;
 	}
 }
 
@@ -156,22 +187,16 @@ CLEDClass::SetColor(
 		return;
 	}
 
-	if(inTransitionTimeMS > 0)
+	if(inTransitionTimeMS < 1)
 	{
-		gLEDState[inLEDIndex].targetR = inRed;
-		gLEDState[inLEDIndex].targetG = inGreen;
-		gLEDState[inLEDIndex].targetB = inBlue;
-		gLEDState[inLEDIndex].transitionStartTime = gCurTimeMS;
-		gLEDState[inLEDIndex].transitionFinishTime = gCurTimeMS + inTransitionTimeMS;
+		inTransitionTimeMS = 1;
 	}
-	else
-	{
-		gLEDState[inLEDIndex].r = gFastLEDData[inLEDIndex].r = inRed;
-		gLEDState[inLEDIndex].g = gFastLEDData[inLEDIndex].g = inGreen;
-		gLEDState[inLEDIndex].b = gFastLEDData[inLEDIndex].b = inBlue;
 
-		gUpdateLEDs = true;
-	}
+	gLEDState[inLEDIndex].targetR = inRed;
+	gLEDState[inLEDIndex].targetG = inGreen;
+	gLEDState[inLEDIndex].targetB = inBlue;
+	gLEDState[inLEDIndex].transitionStartTime = gCurTimeMS;
+	gLEDState[inLEDIndex].transitionFinishTime = gCurTimeMS + inTransitionTimeMS;
 }
 
 void
@@ -198,5 +223,12 @@ CLEDClass::PulseOnOff(
 	{
 		gLEDState[inLEDIndex].pulsingTransitionOff = true;
 	}
+}
+
+void
+CLEDClass::CycleAll(
+	bool	inOn)
+{
+	gCycle = inOn;
 }
 

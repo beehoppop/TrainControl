@@ -36,12 +36,22 @@ DebugMsg(
 	vsnprintf(buffer, sizeof(buffer), inMsg, varArgs);
 	va_end(varArgs);
 
-	Serial.printf("[%d] %s", gConfig.GetVal(eConfigVar_NodeID), buffer);
+	char	timestamp[32];
+	uint32_t	remaining = gCurTimeMS / 1000;
+	uint32_t	hours = remaining / (60 * 60);
+	remaining -= hours * 60 * 60;
+	uint32_t	mins = remaining / 60;
+	remaining -= mins * 60;
+	uint32_t	secs = remaining;
+
+	snprintf(timestamp, sizeof(timestamp), "%02lu:%02lu:%02lu:%03lu", hours, mins, secs, gCurTimeMS % 1000);
+
+	Serial.printf("[%02d|%s] %s", gConfig.GetVal(eConfigVar_NodeID), timestamp, buffer);
 
 	uint8_t	debugNode = gConfig.GetVal(eConfigVar_DebugNode);
 
 	if(debugNode != 0xFF && gCANBus.Ready())
 	{
-		gAction.SendSerial(debugNode, "[%d] %s", gConfig.GetVal(eConfigVar_NodeID), buffer);
+		gAction.SendSerial(debugNode, "[%d|%s] %s", gConfig.GetVal(eConfigVar_NodeID), timestamp, buffer);
 	}
 }

@@ -7,6 +7,7 @@
 #include "TCCommon.h"
 #include "TCModule.h"
 #include "TCUtilities.h"
+#include "TCConfig.h"
 
 enum
 {
@@ -17,8 +18,9 @@ enum
 
 };
 
-#define MDebugModules 0
+#define MDebugDelayEachModule 0
 #define MDebugDelayStart 0
+#define MDebugTargetNode 0
 
 struct SEEPROMEntry
 {
@@ -172,6 +174,9 @@ void
 CModule::SetupAll(
 	void)
 {
+	pinMode(13, OUTPUT);
+	digitalWrite(13, 1);
+
 	Serial.begin(115200);
 
 	if(gTooManyModules)
@@ -206,7 +211,7 @@ CModule::SetupAll(
 
 		if(target != NULL && target->size != gModuleList[i]->eepromSize)
 		{
-			DebugMsg(eDbgLevel_Medium, "Module: %s changed size\n", StringizeUInt32(gModuleList[i]->uid));
+			//DebugMsg(eDbgLevel_Medium, "Module: %s changed size\n", StringizeUInt32(gModuleList[i]->uid));
 			target->uid = 0xFFFFFFFF;
 			target->offset = 0xFFFF;
 			target->size = 0xFFFF;
@@ -225,13 +230,13 @@ CModule::SetupAll(
 			gModuleList[i]->eepromOffset = target->offset;
 			gModuleList[i]->EEPROMInitialize();
 
-			DebugMsg(eDbgLevel_Medium, "Module: %s added\n", StringizeUInt32(target->uid));
+			//DebugMsg(eDbgLevel_Medium, "Module: %s added\n", StringizeUInt32(target->uid));
 
 			changes = true;
 		}
 
 		gModuleList[i]->eepromOffset = target->offset;
-		DebugMsg(eDbgLevel_Medium, "Module: %s offset is %d\n", StringizeUInt32(target->uid), target->offset);
+		//DebugMsg(eDbgLevel_Medium, "Module: %s offset is %d\n", StringizeUInt32(target->uid), target->offset);
 	}
 
 	for(int i = 0; i < eMaxModuleCount; ++i)
@@ -259,13 +264,16 @@ CModule::SetupAll(
 		WriteDataToEEPROM(gEEPROMEntryList, eEEPROM_ListStart, sizeof(gEEPROMEntryList));
 	}
 
+	#if MDebugDelayStart
+		if(MDebugTargetNode == 0xFF || MDebugTargetNode == gConfig.GetVal(eConfigVar_NodeID))
+		{
+			delay(6000);
+		}
+	#endif
+
 	gCurTimeMS = millis();
 	gCurTimeUS = micros();
 	uint32_t	timeOffsetUS = 0;
-
-	#if MDebugDelayStart
-	delay(6000);
-	#endif
 
 	for(int priorityItr = 256; priorityItr-- > 0;)
 	{
@@ -273,9 +281,14 @@ CModule::SetupAll(
 		{
 			if(gModuleList[i]->priority == priorityItr)
 			{
-				DebugMsg(eDbgLevel_Medium, "Module: Setup %s\n", StringizeUInt32(gModuleList[i]->uid));
-				#if MDebugModules
-				delay(3000);
+				#if MDebugDelayEachModule || MDebugDelayStart
+					DebugMsg(eDbgLevel_Medium, "Module: Setup %s\n", StringizeUInt32(gModuleList[i]->uid));
+				#endif
+				#if MDebugDelayEachModule
+					if(MDebugTargetNode == 0xFF || MDebugTargetNode == gConfig.GetVal(eConfigVar_NodeID))
+					{
+						delay(3000);
+					}
 				#endif
 				gModuleList[i]->Setup();
 				gModuleList[i]->lastUpdateUS = gCurTimeUS + timeOffsetUS;
@@ -284,8 +297,8 @@ CModule::SetupAll(
 		}
 	}
 
-	#if MDebugModules
-	DebugMsg(eDbgLevel_Medium, "Module: Setup Complete\n");
+	#if MDebugDelayEachModule || MDebugDelayStart
+		DebugMsg(eDbgLevel_Medium, "Module: Setup Complete\n");
 	#endif
 }
 
@@ -343,6 +356,13 @@ void
 CModule::LoopAll(
 	void)
 {
+	if(gConfig.GetVal(eConfigVar_BlinkTeensyLED) == 1)
+	{
+		static bool	on = false;
+
+		digitalWriteFast(13, on);
+		on = !on;
+	}
 
 	for(int i = 0; i < gModuleCount; ++i)
 	{

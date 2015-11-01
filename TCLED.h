@@ -44,6 +44,10 @@ public:
 		uint8_t		inLEDIndex,
 		float		inPulsesPerSecond,
 		bool		inPulseOn);
+
+	void
+	CycleAll(
+		bool	inOn);
 };
 
 extern CLEDClass gLED;

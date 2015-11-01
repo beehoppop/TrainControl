@@ -26,6 +26,7 @@ enum
 	eConfigVar_LEDSPIPin,
 	eConfigVar_TouchMode,
 	eConfigVar_DebugNode,	// Serial port if 0xFF
+	eConfigVar_BlinkTeensyLED,
 
 	eConfigVar_Max = 16
 };
@@ -57,6 +58,7 @@ public:
 private:
 
 	uint8_t	configVar[eConfigVar_Max];
+	bool	setupComplete;
 };
 
 extern CModule_Config	gConfig;

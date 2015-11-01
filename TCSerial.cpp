@@ -36,6 +36,7 @@
 		table_read [table type] [node id] [table index]
 		table_update [table type] [node id]
 		led id [led num] on|off
+		led cycle on|off
 		dcc_command [command id] power [on|off]
 		dcc_command [command id] allstop
 		dcc_command [command id] dir [address] [for|rev]
@@ -195,6 +196,10 @@ public:
 		{
 			msg.configVar = eConfigVar_DebugNode;
 		}
+		else if(strcmp(inComponents[2], "blink_led") == 0)
+		{
+			msg.configVar = eConfigVar_BlinkTeensyLED;
+		}
 		else
 		{
 			DebugMsg(eDbgLevel_Basic, "Expecting valid config var but got \"%s\"\n", inComponents[2]);
@@ -268,6 +273,22 @@ public:
 			else
 			{
 				DebugMsg(eDbgLevel_Basic, "invalid led command, expected on or off \"%s\"\n", inComponents[2]);
+				return false;
+			}
+		}
+		else if(strcmp(inComponents[0], "cycle") == 0)
+		{
+			if(strcmp(inComponents[1], "on") == 0)
+			{
+				gLED.CycleAll(true);
+			}
+			else if(strcmp(inComponents[1], "off") == 0)
+			{
+				gLED.CycleAll(false);
+			}
+			else
+			{
+				DebugMsg(eDbgLevel_Basic, "invalid led command, expected on or off \"%s\"\n", inComponents[1]);
 				return false;
 			}
 		}

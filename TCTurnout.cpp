@@ -106,10 +106,11 @@ CModule_Turnout::SetTurnoutDirection(
 
 	uint8_t	tableIndex = turnoutIDToTableIndexMap[inTurnoutID];
 
-	if(tableIndex < eMaxTrackTurnoutCount)
+	if(tableIndex < eMaxTrackTurnoutCount && inDirection != turnoutDirectionArray[tableIndex])
 	{
 		ActivateTurnout(tableIndex, inDirection);
-		EEPROM.write(turnoutDirectionOffset + tableIndex, inDirection == eTurnDir_Straight ? eTurnDir_Straight : eTurnDir_Turnout);
+		turnoutDirectionArray[tableIndex] = inDirection == eTurnDir_Straight ? eTurnDir_Straight : eTurnDir_Turnout;
+		EEPROM.write(turnoutDirectionOffset + tableIndex, turnoutDirectionArray[tableIndex]);
 	}
 }
 

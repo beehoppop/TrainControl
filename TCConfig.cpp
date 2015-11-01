@@ -13,6 +13,7 @@ CModule_Config::CModule_Config(
 	:
 	CModule("cnfg", sizeof(configVar), 0, 255)
 {
+	setupComplete = false;
 	configVar[eConfigVar_DebugLevel] = eDbgLevel_Basic;
 }
 
@@ -20,9 +21,18 @@ void
 CModule_Config::Setup(
 	void)
 {
+	if(setupComplete)
+	{
+		return;
+	}
+
+	MAssert(eepromOffset > 0);
+
 	LoadDataFromEEPROM(configVar, eepromOffset, sizeof(configVar));
 
 	configVar[eConfigVar_DebugLevel] = eDbgLevel_Basic;
+
+	setupComplete = true;
 }
 
 void
@@ -35,6 +45,7 @@ uint8_t
 CModule_Config::GetVal(
 	uint8_t	inVar)
 {
+	Setup();
 	MAssert(inVar < eConfigVar_Max);
 	return configVar[inVar];
 }
@@ -44,6 +55,7 @@ CModule_Config::SetVal(
 	uint8_t	inVar,
 	uint8_t	inVal)
 {
+	Setup();
 	MAssert(inVar < eConfigVar_Max);
 	configVar[inVar] = inVal;
 	EEPROM.write(eepromOffset + inVar, inVal);

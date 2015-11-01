@@ -6,12 +6,15 @@
 
 #include "TCModule.h"
 
-char const*	gVersionStr = "0.3.0";
+char const*	gVersionStr = "0.4.0";
 
 void
 setup(
 	void)
 {
+	pinMode(13, OUTPUT);
+	digitalWrite(13, 1);
+
 	CModule::SetupAll();
 }
 

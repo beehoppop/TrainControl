@@ -354,15 +354,3 @@ MPRSetReleaseSensitivity(
 	// Exist config mode
 	MPR121SetRegister(ELE_CFG, 0x0C);
 }
-
-
-#if 0
-	bool	eventReady = digitalReadFast(eIRQPin) == 0;
-
-	if(eventReady)
-	{
-		DebugMsg(eDbgLevel_Verbose, "MPR121: Got event");
-
-
-
-#endif
