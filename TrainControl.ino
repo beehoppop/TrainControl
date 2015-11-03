@@ -12,9 +12,6 @@ void
 setup(
 	void)
 {
-	pinMode(13, OUTPUT);
-	digitalWrite(13, 1);
-
 	CModule::SetupAll();
 }
 

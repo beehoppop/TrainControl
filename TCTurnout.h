@@ -19,9 +19,13 @@ public:
 	CModule_Turnout(
 		);
 
-	void
+	virtual void
 	Setup(
 		void);
+
+	virtual void
+	Update(
+		uint32_t	inDeltaTimeUS);
 	
 	void
 	SetTurnoutDirection(
@@ -60,7 +64,7 @@ private:
 
 	void
 	ActivateTurnout(
-		uint8_t	inTableIndex,
+		uint8_t	inTurnoutID,
 		uint8_t	inDirection);
 
 	STrackTurnoutConfig			turnoutConfigArray[eMaxTrackTurnoutCount];
@@ -73,6 +77,8 @@ private:
 
 	STurnoutIDToLEDNumList	turnoutIDToLEDNumMap[eMaxTurnoutID];
 	uint8_t					turnoutIDToTableIndexMap[eMaxTurnoutID];
+
+	uint8_t	turnoutTransmitIndex;
 };
 
 extern CModule_Turnout gTurnout;

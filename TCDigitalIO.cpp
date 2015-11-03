@@ -15,7 +15,7 @@ enum
 
 	eSettleTimeMS = 50,
 
-	eUpdateTimeUS = 10000
+	eUpdateTimeUS = 20000
 };
 
 CModule_DigitalIO	gDigitalIO;
@@ -23,11 +23,18 @@ CModule_DigitalIO	gDigitalIO;
 CModule_DigitalIO::CModule_DigitalIO(
 	)
 	:
-	CModule("dgio", 0, eUpdateTimeUS)
+	CModule("dgio", 0, eUpdateTimeUS, 1)
 {
-	memset(inputPinLastChange, 0, sizeof(inputPinLastChange));
+}
+
+void
+CModule_DigitalIO::Setup(
+	void)
+{
+	memset(pinInOutMode, 0, sizeof(pinInOutMode));
+	memset(pinTime, 0, sizeof(pinTime));
 	memset(inputPinLastState, 0, sizeof(inputPinLastState));
-	memset(outputPinState, 0, sizeof(outputPinState));
+	memset(pinActivated, 0, sizeof(pinActivated));
 }
 
 void
@@ -36,11 +43,69 @@ CModule_DigitalIO::Update(
 {
 	for(int i = 0; i < eDIOPinCount; ++i)
 	{
-		if(outputPinState[i] > 0 && gCurTimeMS >= outputPinState[i])
+		if(pinInOutMode[i] == ePinMode_Input)
 		{
-			outputPinState[i] = 0;
-			digitalWriteFast(i, 0);
+			uint8_t	value = digitalReadFast(i);
+
+			switch(inputPinLastState[i])
+			{
+				case eState_WaitingForChange:
+					if(value == 0)
+					{
+						pinTime[i] = gCurTimeMS;
+						inputPinLastState[i] = eState_WaitingForSettle;
+					}
+					break;
+
+				case eState_WaitingForSettle:
+					if(value != 0)
+					{
+						inputPinLastState[i] = eState_WaitingForChange;
+						break;
+					}
+
+					if(gCurTimeMS - pinTime[i] >= eSettleTimeMS)
+					{
+						DebugMsg(eDbgLevel_Verbose, "dio pin %d activated\n", i);
+						inputPinLastState[i] = eState_WaitingForDeactive;
+						pinActivated[i] = true;
+					}
+					break;
+
+				case eState_WaitingForDeactive:
+					if(value != 0 && pinActivated[i] == false)
+					{
+						inputPinLastState[i] = eState_WaitingForChange;
+					}
+					break;
+			}
 		}
+		else if(pinInOutMode[i] == ePinMode_Output)
+		{
+			if(pinTime[i] > 0 && gCurTimeMS >= pinTime[i])
+			{
+				pinTime[i] = 0;
+				digitalWriteFast(i, 0);
+			}
+		}
+	}
+}
+
+void
+CModule_DigitalIO::SetPinMode(
+	uint8_t			inPin,
+	EPinInOutMode	inMode)
+{
+	MAssert(inPin < eDIOPinCount);
+
+	pinInOutMode[inPin] = inMode;
+	if(inMode == ePinMode_Input)
+	{
+		pinMode(inPin, INPUT_PULLUP);
+	}
+	else if(inMode == ePinMode_Output)
+	{
+		pinMode(inPin, OUTPUT);
 	}
 }
 
@@ -48,42 +113,13 @@ bool
 CModule_DigitalIO::CheckInputActivated(
 	uint8_t	inPin)
 {
-	uint8_t	value = digitalReadFast(inPin);
+	MAssert(inPin < eDIOPinCount);
 
-	switch(inputPinLastState[inPin])
-	{
-		case eState_WaitingForChange:
-			if(value == 0)
-			{
-				inputPinLastChange[inPin] = gCurTimeMS;
-				inputPinLastState[inPin] = eState_WaitingForSettle;
-			}
-			return false;
+	bool	result = pinActivated[inPin];
 
-		case eState_WaitingForSettle:
-			if(value != 0)
-			{
-				inputPinLastState[inPin] = eState_WaitingForChange;
-				return false;
-			}
+	pinActivated[inPin] = false;
 
-			if(gCurTimeMS - inputPinLastChange[inPin] >= eSettleTimeMS)
-			{
-				DebugMsg(eDbgLevel_Verbose, "dio pin %d activated\n", inPin);
-				inputPinLastState[inPin] = eState_WaitingForDeactive;
-				return true;
-			}
-			return false;
-
-		case eState_WaitingForDeactive:
-			if(value != 0)
-			{
-				inputPinLastState[inPin] = eState_WaitingForChange;
-			}
-			return false;
-	}
-
-	return false;
+	return result;
 }
 
 void
@@ -92,7 +128,7 @@ CModule_DigitalIO::SetOutputHighWithTimeout(
 	uint32_t	inDurationMS)
 {
 	digitalWriteFast(inPin, 1);
-	outputPinState[inPin] = gCurTimeMS + inDurationMS;
+	pinTime[inPin] = gCurTimeMS + inDurationMS;
 }
 
 void
@@ -100,5 +136,5 @@ CModule_DigitalIO::SetOutputLow(
 	uint8_t	inPin)
 {
 	digitalWriteFast(inPin, 0);
-	outputPinState[inPin] = 0;
+	pinTime[inPin] = 0;
 }

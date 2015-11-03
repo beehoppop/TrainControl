@@ -20,7 +20,7 @@ enum
 
 #define MDebugDelayEachModule 0
 #define MDebugDelayStart 0
-#define MDebugTargetNode 0
+#define MDebugTargetNode 0xFF
 
 struct SEEPROMEntry
 {

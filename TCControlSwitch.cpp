@@ -296,8 +296,8 @@ CModule_ControlSwitch::TableUpdate(
 			touchIDToControlSwitchIndexMap[controlSwitchArray[i].touchID] = i;
 		}
 
-		pinMode(controlSwitchArray[i].straightDInPin, INPUT_PULLUP);
-		pinMode(controlSwitchArray[i].turnDInPin, INPUT_PULLUP);
+		gDigitalIO.SetPinMode(controlSwitchArray[i].straightDInPin, ePinMode_Input);
+		gDigitalIO.SetPinMode(controlSwitchArray[i].turnDInPin, ePinMode_Input);
 	}
 
 	for(int i = 0; i < eMaxControlSwitchToTurnoutMapCount; ++i)

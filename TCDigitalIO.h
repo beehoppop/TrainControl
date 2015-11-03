@@ -11,6 +11,13 @@
 
 #include "TCModule.h"
 
+enum EPinInOutMode
+{
+	ePinMode_Unused,
+	ePinMode_Input,
+	ePinMode_Output,
+};
+
 class CModule_DigitalIO : public CModule
 {
 public:
@@ -21,6 +28,15 @@ public:
 	virtual void
 	Update(
 		uint32_t	inDeltaTimeUS);
+
+	virtual void
+	Setup(
+		void);
+
+	void
+	SetPinMode(
+		uint8_t			inPin,
+		EPinInOutMode	inMode);
 
 	bool
 	CheckInputActivated(
@@ -36,9 +52,10 @@ public:
 		uint8_t	inPin);
 
 private:
-	uint32_t	inputPinLastChange[eDIOPinCount];
+	uint8_t		pinInOutMode[eDIOPinCount];
+	uint32_t	pinTime[eDIOPinCount];
 	uint8_t		inputPinLastState[eDIOPinCount];
-	uint32_t	outputPinState[eDIOPinCount];	// 0 if the pin should be low, if > 0 pin should be high and value is millis for when pin should be low
+	bool		pinActivated[eDIOPinCount];
 };
 
 extern CModule_DigitalIO	gDigitalIO;

@@ -26,7 +26,7 @@ CModule_Turnout gTurnout;
 CModule_Turnout::CModule_Turnout(
 	)
 	:
-	CModule("trno", sizeof(turnoutConfigArray) + sizeof(turnoutLEDMapConfigArray) + sizeof(turnoutDirectionArray))
+	CModule("trno", sizeof(turnoutConfigArray) + sizeof(turnoutLEDMapConfigArray) + sizeof(turnoutDirectionArray), 20000)
 {
 	
 }
@@ -50,8 +50,34 @@ CModule_Turnout::Setup(
 	{
 		if(turnoutConfigArray[i].id < eMaxTurnoutID)
 		{
-			ActivateTurnout(i, turnoutDirectionArray[i]);
+			ActivateTurnout(turnoutConfigArray[i].id, turnoutDirectionArray[i]);
 		}
+	}
+
+	turnoutTransmitIndex = 0;
+}
+
+void
+CModule_Turnout::Update(
+	uint32_t	inDeltaTimeUS)
+{
+	// Broadcast the current state of the switches so that other control panels can get updated
+	// Only broadcast one turnout at a time to avoid overflowing any CAN bus buffers
+
+	while(turnoutTransmitIndex < eMaxTrackTurnoutCount)
+	{
+		if(turnoutConfigArray[turnoutTransmitIndex].id < eMaxTurnoutID)
+		{
+			SMsg_TrackTurnout	turnoutMsg;
+			turnoutMsg.timeMS = gCurTimeMS;
+			turnoutMsg.id = turnoutConfigArray[turnoutTransmitIndex].id;
+			turnoutMsg.direction = turnoutDirectionArray[turnoutTransmitIndex];
+			gCANBus.SendMsg(0xFF, eMsgType_TrackTurnout, 0, sizeof(turnoutMsg), &turnoutMsg);
+			++turnoutTransmitIndex;
+			break;
+		}
+
+		++turnoutTransmitIndex;
 	}
 }
 
@@ -104,11 +130,12 @@ CModule_Turnout::SetTurnoutDirection(
 		return;
 	}
 
+	ActivateTurnout(inTurnoutID, inDirection);
+
 	uint8_t	tableIndex = turnoutIDToTableIndexMap[inTurnoutID];
 
 	if(tableIndex < eMaxTrackTurnoutCount && inDirection != turnoutDirectionArray[tableIndex])
 	{
-		ActivateTurnout(tableIndex, inDirection);
 		turnoutDirectionArray[tableIndex] = inDirection == eTurnDir_Straight ? eTurnDir_Straight : eTurnDir_Turnout;
 		EEPROM.write(turnoutDirectionOffset + tableIndex, turnoutDirectionArray[tableIndex]);
 	}
@@ -116,25 +143,32 @@ CModule_Turnout::SetTurnoutDirection(
 
 void
 CModule_Turnout::ActivateTurnout(
-	uint8_t	inTableIndex,
+	uint8_t	inTurnoutID,
 	uint8_t	inDirection)
 {
-	if(inDirection == eTurnDir_Straight)
+	uint8_t	tableIndex = turnoutIDToTableIndexMap[inTurnoutID];
+
+	DebugMsg(eDbgLevel_Basic, "TO: id %d to %s\n", inTurnoutID, inDirection == eTurnDir_Straight ? "straight" : "turn");
+
+	if(tableIndex < eMaxTrackTurnoutCount)
 	{
-		DebugMsg(eDbgLevel_Basic, "TO: %d to straight, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].straightDOutPin);
-		if(turnoutConfigArray[inTableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[inTableIndex].straightDOutPin < eDIOPinCount)
+		if(inDirection == eTurnDir_Straight)
 		{
-			gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].turnDOutPin);
-			gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].straightDOutPin, eMotorOnTimeMS);
+			DebugMsg(eDbgLevel_Basic, "TO: setting pin %d high\n", turnoutConfigArray[tableIndex].straightDOutPin);
+			if(turnoutConfigArray[tableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[tableIndex].straightDOutPin < eDIOPinCount)
+			{
+				gDigitalIO.SetOutputLow(turnoutConfigArray[tableIndex].turnDOutPin);
+				gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[tableIndex].straightDOutPin, eMotorOnTimeMS);
+			}
 		}
-	}
-	else
-	{
-		DebugMsg(eDbgLevel_Basic, "TO: %d to turn, setting %d high\n", turnoutConfigArray[inTableIndex].id, turnoutConfigArray[inTableIndex].turnDOutPin);
-		if(turnoutConfigArray[inTableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[inTableIndex].straightDOutPin < eDIOPinCount)
+		else
 		{
-			gDigitalIO.SetOutputLow(turnoutConfigArray[inTableIndex].straightDOutPin);
-			gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[inTableIndex].turnDOutPin, eMotorOnTimeMS);
+			DebugMsg(eDbgLevel_Basic, "TO: setting pin %d high\n", turnoutConfigArray[tableIndex].turnDOutPin);
+			if(turnoutConfigArray[tableIndex].turnDOutPin < eDIOPinCount && turnoutConfigArray[tableIndex].straightDOutPin < eDIOPinCount)
+			{
+				gDigitalIO.SetOutputLow(turnoutConfigArray[tableIndex].straightDOutPin);
+				gDigitalIO.SetOutputHighWithTimeout(turnoutConfigArray[tableIndex].turnDOutPin, eMotorOnTimeMS);
+			}
 		}
 	}
 
@@ -156,7 +190,7 @@ CModule_Turnout::ActivateTurnout(
 		straightG = 0;
 	}
 
-	STurnoutIDToLEDNumList*	ledNumList = turnoutIDToLEDNumMap + turnoutConfigArray[inTableIndex].id;
+	STurnoutIDToLEDNumList*	ledNumList = turnoutIDToLEDNumMap + inTurnoutID;
 
 	for(int i = 0; i < ledNumList->count; ++i)
 	{
@@ -260,8 +294,8 @@ CModule_Turnout::TableUpdate(
 			turnoutIDToTableIndexMap[turnoutConfigArray[i].id] = i;
 			if(turnoutConfigArray[i].straightDOutPin < eDIOPinCount && turnoutConfigArray[i].turnDOutPin < eDIOPinCount)
 			{
-				pinMode(turnoutConfigArray[i].straightDOutPin, OUTPUT);
-				pinMode(turnoutConfigArray[i].turnDOutPin, OUTPUT);
+				gDigitalIO.SetPinMode(turnoutConfigArray[i].straightDOutPin, ePinMode_Output);
+				gDigitalIO.SetPinMode(turnoutConfigArray[i].turnDOutPin, ePinMode_Output);
 			}
 		}
 

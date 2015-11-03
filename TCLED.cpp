@@ -192,11 +192,23 @@ CLEDClass::SetColor(
 		inTransitionTimeMS = 1;
 	}
 
-	gLEDState[inLEDIndex].targetR = inRed;
-	gLEDState[inLEDIndex].targetG = inGreen;
-	gLEDState[inLEDIndex].targetB = inBlue;
-	gLEDState[inLEDIndex].transitionStartTime = gCurTimeMS;
-	gLEDState[inLEDIndex].transitionFinishTime = gCurTimeMS + inTransitionTimeMS;
+	SLEDState*	curState = gLEDState + inLEDIndex;
+
+	if(curState->transitionFinishTime > curState->transitionStartTime && curState->transitionFinishTime > gCurTimeMS)
+	{
+		// We are still transitioning to a new color - set the rgb fields to our in progress result so that we transition from there
+		float transFactor = (float)(gCurTimeMS - curState->transitionStartTime) / (float)(curState->transitionFinishTime - curState->transitionStartTime);
+		float transFactorInv = 1.0f - transFactor;
+		curState->r = (uint8_t)((float)curState->r * transFactorInv + (float)curState->targetR * transFactor);
+		curState->g = (uint8_t)((float)curState->g * transFactorInv + (float)curState->targetG * transFactor);
+		curState->b = (uint8_t)((float)curState->b * transFactorInv + (float)curState->targetB * transFactor);
+	}
+
+	curState->targetR = inRed;
+	curState->targetG = inGreen;
+	curState->targetB = inBlue;
+	curState->transitionStartTime = gCurTimeMS;
+	curState->transitionFinishTime = gCurTimeMS + inTransitionTimeMS;
 }
 
 void
