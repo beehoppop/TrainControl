@@ -44,8 +44,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;C:\Users\brent\Documents\Arduino\TrainControl;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries;C:\Program Files (x86)\Visual Micro\Visual Micro for Arduino\Micro Platforms\default\debuggers;C:\Users\brent\Documents\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\tools\avr/avr/include/;C:\Program Files (x86)\Arduino\hardware\tools\avr//avr/include/avr/;C:\Program Files (x86)\Arduino\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>C:\Users\brent\Documents\Arduino\TrainControl\Visual Micro\.TrainControl.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;C:\Users\brent\Documents\Arduino\TrainControl;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\EEPROM\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FastLED\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\FlexCAN\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\TimerOne\utility;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries;C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\Extensions\rbyjgy53.fp3\Micro Platforms\default\debuggers;C:\Users\brent\Documents\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\tools\avr/avr/include/;C:\Program Files (x86)\Arduino\hardware\tools\avr//avr/include/avr/;C:\Program Files (x86)\Arduino\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>C:\Users\brent\Documents\Arduino\TrainControl\__vm\.TrainControl.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__MK20DX256__;TEENSYDUINO=124;ARDUINO=165;F_CPU=72000000;ARDUINO_ARCH_AVR;USB_SERIAL;LAYOUT_US_ENGLISH;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -89,7 +89,7 @@
     <ClInclude Include="TCTeensyTouch.h" />
     <ClInclude Include="TCTurnout.h" />
     <ClInclude Include="TCUtilities.h" />
-    <ClInclude Include="Visual Micro\.TrainControl.vsarduino.h" />
+    <ClInclude Include="__vm\.TrainControl.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TCAction.cpp" />
@@ -113,7 +113,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM12" />
+      <UserProperties arduino.upload.port="COM9" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

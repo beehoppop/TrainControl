@@ -10,6 +10,7 @@
 
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
+#define _VMDEBUG 1
 #define __MK20DX256__
 #define TEENSYDUINO 124
 #define ARDUINO 165
@@ -18,6 +19,7 @@
 #define USB_SERIAL
 #define LAYOUT_US_ENGLISH
 #define __cplusplus
+#define __AVR__
 #define __inline__
 #define __asm__(x)
 #define __extension__
@@ -83,36 +85,36 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portOutputRegister(P)
 #define portInputRegister(P)
 #define portModeRegister(P)
-#include <TrainControl.ino>
-#include <TCAction.cpp>
-#include <TCAction.h>
-#include <TCAssert.cpp>
-#include <TCAssert.h>
-#include <TCCANBus.cpp>
-#include <TCCANBus.h>
-#include <TCCommon.h>
-#include <TCConfig.cpp>
-#include <TCConfig.h>
-#include <TCControlSwitch.cpp>
-#include <TCControlSwitch.h>
-#include <TCDCC.cpp>
-#include <TCDCC.h>
-#include <TCDigitalIO.cpp>
-#include <TCDigitalIO.h>
-#include <TCLED.cpp>
-#include <TCLED.h>
-#include <TCMPR121.cpp>
-#include <TCMPR121.h>
-#include <TCModule.cpp>
-#include <TCModule.h>
-#include <TCSerial.cpp>
-#include <TCSerial.h>
-#include <TCState.cpp>
-#include <TCState.h>
-#include <TCTeensyTouch.cpp>
-#include <TCTeensyTouch.h>
-#include <TCTurnout.cpp>
-#include <TCTurnout.h>
-#include <TCUtilities.cpp>
-#include <TCUtilities.h>
+#include <..\TrainControl\TrainControl.ino>
+#include <..\TrainControl\TCAction.cpp>
+#include <..\TrainControl\TCAction.h>
+#include <..\TrainControl\TCAssert.cpp>
+#include <..\TrainControl\TCAssert.h>
+#include <..\TrainControl\TCCANBus.cpp>
+#include <..\TrainControl\TCCANBus.h>
+#include <..\TrainControl\TCCommon.h>
+#include <..\TrainControl\TCConfig.cpp>
+#include <..\TrainControl\TCConfig.h>
+#include <..\TrainControl\TCControlSwitch.cpp>
+#include <..\TrainControl\TCControlSwitch.h>
+#include <..\TrainControl\TCDCC.cpp>
+#include <..\TrainControl\TCDCC.h>
+#include <..\TrainControl\TCDigitalIO.cpp>
+#include <..\TrainControl\TCDigitalIO.h>
+#include <..\TrainControl\TCLED.cpp>
+#include <..\TrainControl\TCLED.h>
+#include <..\TrainControl\TCMPR121.cpp>
+#include <..\TrainControl\TCMPR121.h>
+#include <..\TrainControl\TCModule.cpp>
+#include <..\TrainControl\TCModule.h>
+#include <..\TrainControl\TCSerial.cpp>
+#include <..\TrainControl\TCSerial.h>
+#include <..\TrainControl\TCState.cpp>
+#include <..\TrainControl\TCState.h>
+#include <..\TrainControl\TCTeensyTouch.cpp>
+#include <..\TrainControl\TCTeensyTouch.h>
+#include <..\TrainControl\TCTurnout.cpp>
+#include <..\TrainControl\TCTurnout.h>
+#include <..\TrainControl\TCUtilities.cpp>
+#include <..\TrainControl\TCUtilities.h>
 #endif
